@@ -537,8 +537,7 @@ References: [oapi-codegen Echo/strict support](https://github.com/oapi-codegen/o
 ### Operations and identity
 
 ```text
-GET    /health/live
-GET    /health/ready
+GET    /health
 POST   /v1/users
 GET    /v1/users/me
 PATCH  /v1/users/me
@@ -821,11 +820,10 @@ The VM is reproducible from Terraform, Ansible, and the retained image archive. 
 
 - Structured JSON logs through `slog`, including request ID, actor ID where safe, route template, status, latency, and error code.
 - Never log bearer tokens, invitation secrets, complete request bodies, or exact private shopping content by default.
-- `/health/live` checks process liveness only.
-- `/health/ready` checks required configuration and a bounded DB ping.
+- `/health` checks process and database readiness with a bounded DB ping.
 - Basic counters/histograms for HTTP, DB pool, job queue, sync conflicts, and imports.
 - OCI Monitoring/Logging and Notifications within free quotas; Cloudflare analytics for edge traffic.
-- Alarm on instance unreachability, disk pressure, repeated backup failure, readiness failure, DB connection exhaustion, job backlog, and expiring TLS/provider secrets.
+- Alarm on instance unreachability; a local systemd probe emits structured priority alerts for disk pressure, repeated container restarts, and container health failure. No backup alarm exists because the project runs no application backup job.
 - Audit events live in the database; operational logs are not the authorization audit trail.
 - Do not self-host a Grafana/Prometheus stack on the small VM initially.
 
