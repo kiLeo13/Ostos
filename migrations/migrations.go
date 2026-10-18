@@ -54,6 +54,7 @@ func openDatabase(ctx context.Context, rawDSN string) (*sql.DB, error) {
 	configuration.Timeout = 5 * time.Second
 	configuration.ReadTimeout = 10 * time.Second
 	configuration.WriteTimeout = 10 * time.Second
+	configuration.MultiStatements = true
 
 	database, err := sql.Open("mysql", configuration.FormatDSN())
 	if err != nil {

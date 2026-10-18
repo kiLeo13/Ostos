@@ -36,7 +36,7 @@ func TestApplyMigratesEmptyMySQLAndIsIdempotent(t *testing.T) {
 	if err := database.QueryRowContext(ctx, "SELECT version, dirty FROM schema_migrations LIMIT 1").Scan(&version, &dirty); err != nil {
 		t.Fatalf("read schema version: %v", err)
 	}
-	if version != 1 || dirty {
+	if version != 4 || dirty {
 		t.Fatalf("unexpected schema state: version=%d dirty=%t", version, dirty)
 	}
 }
