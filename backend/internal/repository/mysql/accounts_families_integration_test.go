@@ -158,7 +158,9 @@ func TestAccountsAndFamiliesCriticalTransactionsOnRealMySQL(t *testing.T) {
 		t.Fatalf("refresh rotation: pair=%+v err=%v", rotated, err)
 	}
 	independent, err := suite.accounts.Login(ctx, owner.Email, "correct-password", nil)
-	if err != nil { t.Fatalf("independent login: %v", err) }
+	if err != nil {
+		t.Fatalf("independent login: %v", err)
+	}
 	if _, err := suite.accounts.Refresh(ctx, pair.RefreshToken); !errors.Is(err, accounts.ErrRefreshTokenReuse) {
 		t.Fatalf("reused refresh token error = %v", err)
 	}

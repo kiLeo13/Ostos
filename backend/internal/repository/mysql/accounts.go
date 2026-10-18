@@ -201,8 +201,12 @@ func (repository *AccountRepository) RevokeSessionChain(ctx context.Context, use
 			WHERE child.user_id = ?
 		)
 		SELECT id FROM session_chain`, rootSessionID, userID, userID).Scan(&sessionIDs).Error
-	if err != nil { return err }
-	if len(sessionIDs) == 0 { return accounts.ErrInvalidRefreshToken }
+	if err != nil {
+		return err
+	}
+	if len(sessionIDs) == 0 {
+		return accounts.ErrInvalidRefreshToken
+	}
 	return repository.database.WithContext(ctx).Model(&accounts.Session{}).
 		Where("user_id = ? AND id IN ? AND revoked_at IS NULL", userID, sessionIDs).Update("revoked_at", now).Error
 }
