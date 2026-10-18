@@ -3,9 +3,11 @@ package validation
 import (
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 
 	validator "github.com/go-playground/validator/v10"
+	"ostos/backend/internal/platform"
 )
 
 var usernamePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
@@ -19,6 +21,15 @@ func New() (*Validator, error) {
 	engine := validator.New(validator.WithRequiredStructEnabled())
 	engine.RegisterTagNameFunc(jsonFieldName)
 	if err := engine.RegisterValidation("username", validateUsername); err != nil {
+		return nil, err
+	}
+	if err := engine.RegisterValidation("snowflake_id", validateSnowflakeID); err != nil {
+		return nil, err
+	}
+	if err := engine.RegisterValidation("notblank", validateNotBlank); err != nil {
+		return nil, err
+	}
+	if err := engine.RegisterValidation("quantity", validateQuantity); err != nil {
 		return nil, err
 	}
 	return &Validator{engine: engine}, nil
@@ -57,6 +68,20 @@ func validateUsername(field validator.FieldLevel) bool {
 	return len(value) >= 2 && len(value) <= 32 && usernamePattern.MatchString(value)
 }
 
+func validateSnowflakeID(field validator.FieldLevel) bool {
+	value, err := strconv.ParseInt(field.Field().String(), 10, 64)
+	return err == nil && value > 0
+}
+
+func validateNotBlank(field validator.FieldLevel) bool {
+	return strings.TrimSpace(field.Field().String()) != ""
+}
+
+func validateQuantity(field validator.FieldLevel) bool {
+	q, err := platform.ParseQuantity(field.Field().String())
+	return err == nil && q.Milli() > 0
+}
+
 func jsonFieldName(field reflect.StructField) string {
 	name := strings.Split(field.Tag.Get("json"), ",")[0]
 	if name == "" || name == "-" {
@@ -84,6 +109,8 @@ func messageFor(field string, fieldError validator.FieldError) string {
 		return "Choose a supported value"
 	case "gt":
 		return "Enter a value greater than zero"
+	case "quantity":
+		return "Enter a valid positive decimal quantity"
 	default:
 		return "This field is invalid"
 	}
