@@ -1,15 +1,33 @@
 services:
   api:
+    container_name: ostos-api
     image: ${OSTOS_API_IMAGE:?Set OSTOS_API_IMAGE to an immutable image reference}
     restart: unless-stopped
-    network_mode: host
-    environment:
-      OSTOS_ENV: production
-      OSTOS_HTTP_ADDRESS: 127.0.0.1:8080
-      OSTOS_DATABASE_DSN: ${OSTOS_DATABASE_DSN:?Set OSTOS_DATABASE_DSN}
-      OSTOS_SNOWFLAKE_NODE_ID: ${OSTOS_SNOWFLAKE_NODE_ID:?Set OSTOS_SNOWFLAKE_NODE_ID}
+    user: "65532:65532"
+    env_file:
+      - /etc/ostos/runtime.env
+    ports:
+      - "0.0.0.0:443:8443/tcp"
+    volumes:
+      - /etc/ostos/tls/origin.crt:/run/secrets/ostos/origin.crt:ro
+      - /etc/ostos/tls/origin.key:/run/secrets/ostos/origin.key:ro
     read_only: true
     tmpfs:
-      - /tmp:size=16m,mode=1777
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 128
+    mem_limit: 384m
+    cpus: 0.75
+    healthcheck:
+      test: ["CMD", "/api", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    logging:
+      driver: journald
+      options:
+        tag: "ostos-api"

@@ -7,5 +7,7 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/api /api
-EXPOSE 8080
+USER 65532:65532
+EXPOSE 8443
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD ["/api", "healthcheck"]
 ENTRYPOINT ["/api"]
