@@ -22,4 +22,4 @@ These device journeys are documented but not claimed as executed in this reposit
 
 ## Dependency audit note
 
-As of 2026-10-18, `npm audit --omit=dev` reports high-severity findings in transitive Expo/Metro build-tool dependencies (`braces` and `node-forge`) and offers only a forced downgrade to Expo 44. The application is pinned to the current Expo SDK 58 compatibility set; do not apply that breaking downgrade. Re-run the audit on every Expo patch and upgrade when the upstream toolchain publishes compatible fixes.
+As of 2026-10-18, `npm audit --omit=dev` reports 46 advisories (26 moderate and 20 high, with no critical findings). They are in the Expo, React Native, Metro, Jest, and related transitive toolchains; the underlying advisories include `braces`, `node-forge`, `sprintf-js`, and `uuid`. A non-forced audit repair was applied to the lockfile, but npm offers no compatible complete repair and proposes breaking major downgrades for the remaining graph. The application remains pinned to the Expo SDK 58 compatibility set; do not use `npm audit fix --force`. Re-run the audit on every Expo patch and upgrade when compatible upstream fixes are published.
