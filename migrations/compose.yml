@@ -1,0 +1,25 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ostos_integration
+      MYSQL_ROOT_PASSWORD: local_root_only
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-plocal_root_only"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    tmpfs:
+      - /var/lib/mysql
+
+  integration:
+    image: golang:1.27.2-alpine
+    working_dir: /src
+    volumes:
+      - .:/src
+    environment:
+      OSTOS_TEST_MYSQL_DSN: root:local_root_only@tcp(mysql:3306)/ostos_integration?parseTime=true
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: ["go", "test", "-count=1", "./..."]

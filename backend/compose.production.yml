@@ -1,0 +1,15 @@
+services:
+  api:
+    image: ${OSTOS_API_IMAGE:?Set OSTOS_API_IMAGE to an immutable image reference}
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      OSTOS_ENV: production
+      OSTOS_HTTP_ADDRESS: 127.0.0.1:8080
+      OSTOS_DATABASE_DSN: ${OSTOS_DATABASE_DSN:?Set OSTOS_DATABASE_DSN}
+      OSTOS_SNOWFLAKE_NODE_ID: ${OSTOS_SNOWFLAKE_NODE_ID:?Set OSTOS_SNOWFLAKE_NODE_ID}
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    security_opt:
+      - no-new-privileges:true
