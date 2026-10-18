@@ -1,3 +1,4 @@
 # Ansible inventories
 
-No production inventory or credentials belong in source control. Inventory examples are added with infrastructure automation.
+Copy `production.example.yml` to the ignored `production.yml`, replace the
+Terraform output placeholders, and keep SSH keys outside this repository.

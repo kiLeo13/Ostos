@@ -1,0 +1,25 @@
+---
+- name: Converge and deploy the Ostos production API
+  hosts: production
+  become: true
+  gather_facts: true
+  pre_tasks:
+    - name: Validate production inputs
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.os_family == "RedHat"
+          - admin_ipv4_cidr is match('^[0-9.]+/32$')
+          - cloudflare_ipv4_cidrs | length > 0
+          - snowflake_node_id | int >= 0
+          - snowflake_node_id | int <= 1023
+          - ostos_api_version != "replace-with-release-version"
+          - vault_ostos_database_dsn | length > 0
+          - vault_ostos_origin_certificate is search('BEGIN CERTIFICATE')
+          - vault_ostos_origin_private_key is search('BEGIN .*PRIVATE KEY')
+        quiet: true
+      no_log: true
+  roles:
+    - common
+    - docker
+    - firewall
+    - api
