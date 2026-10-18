@@ -17,6 +17,11 @@ node_modules/
 *.tfstate.*
 *.tfplan
 .terraform/
+backend.production.tfbackend
+terraform.tfvars
+infra/ansible/inventories/production.yml
+infra/ansible/inventories/group_vars/production/vault.yml
+infra/ansible/artifacts/
 
 # Editor and operating-system files
 .idea/
