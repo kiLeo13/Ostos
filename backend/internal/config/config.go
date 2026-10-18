@@ -4,7 +4,10 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/netip"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -12,21 +15,26 @@ const defaultBodyLimit int64 = 1 << 20
 
 // Config contains API process configuration. Secrets are never logged by this package.
 type Config struct {
-	Environment   string
-	HTTPAddress   string
-	DatabaseDSN   string
-	SnowflakeNode int64
-	BodyLimit     int64
-	ReadTimeout   time.Duration
-	WriteTimeout  time.Duration
-	JWTSecret     []byte
-	JWTIssuer     string
-	JWTAudience   string
-	EmailTokenKey []byte
-	PublicAppURL  string
-	SESEnabled    bool
-	SESRegion     string
-	SESFrom       string
+	Environment    string
+	HTTPAddress    string
+	DatabaseDSN    string
+	SnowflakeNode  int64
+	BodyLimit      int64
+	ReadTimeout    time.Duration
+	WriteTimeout   time.Duration
+	JWTSecret      []byte
+	JWTIssuer      string
+	JWTAudience    string
+	EmailTokenKey  []byte
+	PublicAppURL   string
+	SESEnabled     bool
+	SESRegion      string
+	SESFrom        string
+	TLSCertFile    string
+	TLSKeyFile     string
+	APIHostname    string
+	CORSOrigins    []string
+	TrustedProxies []netip.Prefix
 }
 
 type LookupFunc func(string) (string, bool)
@@ -96,7 +104,67 @@ func Load(lookup LookupFunc) (Config, error) {
 		return Config{}, errors.New("OSTOS_SES_FROM is required when SES delivery is enabled")
 	}
 
+	config.TLSCertFile = valueOrDefault(lookup, "OSTOS_TLS_CERT_FILE", "")
+	config.TLSKeyFile = valueOrDefault(lookup, "OSTOS_TLS_KEY_FILE", "")
+	config.APIHostname = valueOrDefault(lookup, "OSTOS_API_HOSTNAME", "")
+	config.CORSOrigins, err = parseOrigins(valueOrDefault(lookup, "OSTOS_CORS_ORIGINS", config.PublicAppURL))
+	if err != nil {
+		return Config{}, err
+	}
+	config.TrustedProxies, err = parsePrefixes(valueOrDefault(lookup, "OSTOS_TRUSTED_PROXY_CIDRS", ""))
+	if err != nil {
+		return Config{}, err
+	}
+	if production {
+		if config.TLSCertFile == "" || config.TLSKeyFile == "" {
+			return Config{}, errors.New("OSTOS_TLS_CERT_FILE and OSTOS_TLS_KEY_FILE are required in production")
+		}
+		if config.APIHostname == "" {
+			return Config{}, errors.New("OSTOS_API_HOSTNAME is required in production")
+		}
+		if len(config.TrustedProxies) == 0 {
+			return Config{}, errors.New("OSTOS_TRUSTED_PROXY_CIDRS is required in production")
+		}
+	}
+
 	return config, nil
+}
+
+func parseOrigins(raw string) ([]string, error) {
+	parts := splitCommaSeparated(raw)
+	if len(parts) == 0 {
+		return nil, errors.New("OSTOS_CORS_ORIGINS must contain at least one exact origin")
+	}
+	for _, origin := range parts {
+		parsed, err := url.Parse(origin)
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
+			return nil, fmt.Errorf("OSTOS_CORS_ORIGINS contains invalid origin %q", origin)
+		}
+	}
+	return parts, nil
+}
+
+func parsePrefixes(raw string) ([]netip.Prefix, error) {
+	parts := splitCommaSeparated(raw)
+	prefixes := make([]netip.Prefix, 0, len(parts))
+	for _, value := range parts {
+		prefix, err := netip.ParsePrefix(value)
+		if err != nil {
+			return nil, fmt.Errorf("OSTOS_TRUSTED_PROXY_CIDRS contains invalid CIDR %q", value)
+		}
+		prefixes = append(prefixes, prefix.Masked())
+	}
+	return prefixes, nil
+}
+
+func splitCommaSeparated(raw string) []string {
+	var values []string
+	for _, value := range strings.Split(raw, ",") {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			values = append(values, trimmed)
+		}
+	}
+	return values
 }
 
 func decodeSecret(encoded string, minimum int, name string) ([]byte, error) {
