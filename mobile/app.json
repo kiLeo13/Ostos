@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Ostos",
+    "slug": "ostos",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "ostos",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "br.com.ostos.app",
+      "config": { "usesNonExemptEncryption": false }
+    },
+    "android": { "package": "br.com.ostos.app" },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": { "typedRoutes": true }
+  }
+}
