@@ -25,9 +25,8 @@ func TestHealthRoutes(t *testing.T) {
 		pinger pinger
 		status int
 	}{
-		{name: "live does not depend on database", path: "/health/live", pinger: pinger{err: errors.New("down")}, status: http.StatusOK},
-		{name: "ready", path: "/health/ready", pinger: pinger{}, status: http.StatusOK},
-		{name: "not ready", path: "/health/ready", pinger: pinger{err: errors.New("down")}, status: http.StatusServiceUnavailable},
+		{name: "healthy", path: "/health", pinger: pinger{}, status: http.StatusOK},
+		{name: "database unavailable", path: "/health", pinger: pinger{err: errors.New("down")}, status: http.StatusServiceUnavailable},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			server := router.New(router.Dependencies{Logger: logger, Database: test.pinger, BodyLimit: 1024})

@@ -287,46 +287,30 @@ export type AccountToken = AccountTokenRequest;
 
 export type Email = EmailRequest;
 
-export type GetLivenessData = {
+export type GetHealthData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/health/live';
+    url: '/health';
 };
 
-export type GetLivenessResponses = {
-    /**
-     * Healthy.
-     */
-    200: Health;
-};
-
-export type GetLivenessResponse = GetLivenessResponses[keyof GetLivenessResponses];
-
-export type GetReadinessData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/health/ready';
-};
-
-export type GetReadinessErrors = {
+export type GetHealthErrors = {
     /**
      * Stable API error.
      */
     503: ErrorEnvelope;
 };
 
-export type GetReadinessError = GetReadinessErrors[keyof GetReadinessErrors];
+export type GetHealthError = GetHealthErrors[keyof GetHealthErrors];
 
-export type GetReadinessResponses = {
+export type GetHealthResponses = {
     /**
      * Healthy.
      */
     200: Health;
 };
 
-export type GetReadinessResponse = GetReadinessResponses[keyof GetReadinessResponses];
+export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
 
 export type CreateUserData = {
     body: UserCreateRequestWritable;

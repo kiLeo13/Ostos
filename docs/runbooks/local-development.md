@@ -14,7 +14,7 @@ From `backend/` run:
 docker compose up --build
 ```
 
-The Compose project starts MySQL, runs forward migrations with schema-administration credentials, then starts the API with a lower-privilege application account. The API listens on `http://localhost:8080`; liveness and readiness are available at `/health/live` and `/health/ready`.
+The Compose project starts MySQL, runs forward migrations with schema-administration credentials, then starts the API with a lower-privilege application account. The API listens on `http://localhost:8080`; combined process/database readiness is available at `/health`.
 
 The checked-in passwords are local-only Compose defaults. Never reuse them outside a disposable local database.
 

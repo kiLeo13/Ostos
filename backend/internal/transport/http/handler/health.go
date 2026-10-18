@@ -22,11 +22,7 @@ func NewHealth(database Pinger, timeout time.Duration) *Health {
 	return &Health{database: database, timeout: timeout}
 }
 
-func (health *Health) Live(context *echo.Context) error {
-	return context.JSON(http.StatusOK, map[string]string{"status": "ok"})
-}
-
-func (health *Health) Ready(echoContext *echo.Context) error {
+func (health *Health) Check(echoContext *echo.Context) error {
 	if health.database == nil {
 		return apierrors.New(http.StatusServiceUnavailable, apierrors.CodeUnavailable, "A required dependency is unavailable")
 	}

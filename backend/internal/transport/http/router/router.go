@@ -2,9 +2,11 @@ package router
 
 import (
 	"log/slog"
+	"net/netip"
 	"time"
 
 	"github.com/labstack/echo/v5"
+	echomiddleware "github.com/labstack/echo/v5/middleware"
 	"ostos/backend/internal/transport/http/handler"
 	httpmiddleware "ostos/backend/internal/transport/http/middleware"
 	"ostos/backend/internal/transport/http/response"
@@ -12,26 +14,42 @@ import (
 )
 
 type Dependencies struct {
-	Logger       *slog.Logger
-	Database     handler.Pinger
-	BodyLimit    int64
-	Accounts     handler.AccountService
-	AccessTokens httpmiddleware.AccessTokenParser
-	Families     handler.FamilyService
-	Shopping     handler.ShoppingService
-	Validator    *validation.Validator
+	Logger         *slog.Logger
+	Database       handler.Pinger
+	BodyLimit      int64
+	Accounts       handler.AccountService
+	AccessTokens   httpmiddleware.AccessTokenParser
+	Families       handler.FamilyService
+	Shopping       handler.ShoppingService
+	Validator      *validation.Validator
+	CORSOrigins    []string
+	TrustedProxies []netip.Prefix
 }
 
 func New(dependencies Dependencies) *echo.Echo {
 	server := echo.New()
 	server.Logger = dependencies.Logger
 	server.HTTPErrorHandler = response.ErrorHandler(dependencies.Logger)
+	server.IPExtractor = httpmiddleware.TrustedProxyIPExtractor(dependencies.TrustedProxies)
 	server.Use(httpmiddleware.BodyLimit(dependencies.BodyLimit))
 	server.Use(httpmiddleware.RequestID())
+	server.Use(httpmiddleware.RequestLogger(dependencies.Logger))
+	if len(dependencies.CORSOrigins) > 0 {
+		cors, err := (echomiddleware.CORSConfig{
+			AllowOrigins:  dependencies.CORSOrigins,
+			AllowMethods:  []string{"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+			AllowHeaders:  []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"},
+			ExposeHeaders: []string{"Location", "X-Request-ID"},
+			MaxAge:        600,
+		}).ToMiddleware()
+		if err != nil {
+			panic("invalid CORS configuration: " + err.Error())
+		}
+		server.Use(cors)
+	}
 
 	health := handler.NewHealth(dependencies.Database, 2*time.Second)
-	server.GET("/health/live", health.Live)
-	server.GET("/health/ready", health.Ready)
+	server.GET("/health", health.Check)
 
 	if dependencies.Accounts == nil || dependencies.AccessTokens == nil || dependencies.Families == nil || dependencies.Validator == nil {
 		return server
