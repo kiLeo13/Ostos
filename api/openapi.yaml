@@ -998,10 +998,8 @@ components:
       properties:
         access_token:
           type: string
-          writeOnly: true
         refresh_token:
           type: string
-          writeOnly: true
         token_type:
           type: string
           const: Bearer

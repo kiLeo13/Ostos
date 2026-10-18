@@ -2,6 +2,11 @@
   "name": "@ostos/api-contract",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./generated/index.ts",
+    "./client": "./generated/client.gen.ts",
+    "./types": "./generated/types.gen.ts"
+  },
   "scripts": {
     "lint": "redocly lint openapi.yaml",
     "generate": "openapi-ts",

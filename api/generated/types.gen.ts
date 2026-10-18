@@ -67,6 +67,8 @@ export type PasswordResetRequest = {
 };
 
 export type TokenPair = {
+    access_token: string;
+    refresh_token: string;
     token_type: 'Bearer';
     expires_in: 1800;
 };
@@ -269,13 +271,6 @@ export type LoginRequestWritable = {
 export type PasswordResetRequestWritable = {
     token: string;
     new_password: Password;
-};
-
-export type TokenPairWritable = {
-    access_token: string;
-    refresh_token: string;
-    token_type: 'Bearer';
-    expires_in: 1800;
 };
 
 export type FamilyId = SnowflakeId;
