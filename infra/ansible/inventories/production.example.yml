@@ -1,0 +1,9 @@
+all:
+  children:
+    production:
+      hosts:
+        ostos-api-production:
+          ansible_host: 203.0.113.20
+          ansible_user: opc
+          ansible_ssh_private_key_file: C:/Users/you/.ssh/ostos-production
+          snowflake_node_id: 0

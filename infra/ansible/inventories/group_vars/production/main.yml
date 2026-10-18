@@ -1,0 +1,37 @@
+ostos_uid: 65532
+ostos_gid: 65532
+ostos_api_hostname: api.example.com
+ostos_public_app_url: https://app.example.com
+ostos_cors_origins:
+  - https://app.example.com
+
+admin_ipv4_cidr: 203.0.113.10/32
+cloudflare_ipv4_cidrs:
+  - 173.245.48.0/20
+  - 103.21.244.0/22
+  - 103.22.200.0/22
+  - 103.31.4.0/22
+  - 141.101.64.0/18
+  - 108.162.192.0/18
+  - 190.93.240.0/20
+  - 188.114.96.0/20
+  - 197.234.240.0/22
+  - 198.41.128.0/17
+  - 162.158.0.0/15
+  - 104.16.0.0/13
+  - 104.24.0.0/14
+  - 172.64.0.0/13
+  - 131.0.72.0/22
+
+# Pin these to versions available in Docker's EL9 repository after review.
+docker_ce_version: "3:28.5.1-1.el9"
+docker_compose_version: "2.40.3-1.el9"
+
+ostos_api_version: "replace-with-release-version"
+ostos_api_image: "ostos-api:replace-with-release-version"
+ostos_api_archive_local: "{{ playbook_dir }}/../artifacts/ostos-api-replace-with-release-version.tar.gz"
+
+ostos_ses_enabled: true
+ostos_ses_region: sa-east-1
+ostos_ses_from: no-reply@example.com
+

@@ -1,0 +1,14 @@
+# Encrypt the real file as inventories/group_vars/production/vault.yml with ansible-vault.
+vault_ostos_database_dsn: "ostos_app:replace@tcp(mysql.mysql.ostos.oraclevcn.com:3306)/ostos?tls=true"
+vault_ostos_jwt_secret_base64: "replace"
+vault_ostos_email_token_key_base64: "replace"
+vault_ostos_origin_certificate: |
+  -----BEGIN CERTIFICATE-----
+  replace
+  -----END CERTIFICATE-----
+vault_ostos_origin_private_key: |
+  -----BEGIN PRIVATE KEY-----
+  replace
+  -----END PRIVATE KEY-----
+vault_aws_access_key_id: "replace"
+vault_aws_secret_access_key: "replace"
