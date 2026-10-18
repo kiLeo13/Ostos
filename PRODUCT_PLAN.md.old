@@ -1,0 +1,1318 @@
+# Ostos implementation plan
+
+Status: approved implementation baseline  
+Last reconciled: 2026-10-17  
+Initial delivery: mobile application and Go API  
+Near-future delivery: complete authenticated web application
+
+This document is the ordered implementation authority for Ostos. When an implementation detail here conflicts with `ARCHITECTURE.md`, this plan records the later approved decision and takes precedence until the architecture document is reconciled.
+
+## 1. Establish the product intention
+
+1. Build Ostos as a small, real application for a small userbase.
+2. Let a person create an account, verify their email, create or join Families, and collaborate on one shared grocery list per Family.
+3. Give every Family exactly one Owner and permit additional Managers and Members.
+4. Let authorized Family participants add, edit, reorder, check, uncheck, keep, discard, and purchase grocery-list entries.
+5. Treat the current grocery list as the live planning and shopping surface rather than creating a persisted active-trip aggregate.
+6. When the current list is completed:
+   1. Copy checked items into immutable purchase history.
+   2. Remove purchased items from the current list.
+   3. Retain unchecked items selected as `keep`, clearing any temporary shopping state.
+   4. Delete unchecked items selected as `discard` without placing them in history.
+7. Record who added every current-list item and who completed each historical purchase.
+8. Allow the completing user to record an optional freeform supermarket name until a normalized supermarket catalog is introduced.
+9. Allow actual purchased quantity and total amount paid in cents to be recorded for purchased items.
+10. Optimize for correctness, clarity, a tiny operational footprint, and the stated OCI Always Free constraints rather than hypothetical large-scale traffic.
+11. Keep the initial product useful without a product catalog, retailer feed, barcode database, or complete supermarket assortment.
+12. Preserve a future path toward brands, exact product variants, product images, supermarket branches, retailer offers, and local price comparison without implementing those systems now.
+
+## 2. Fix the current delivery scope
+
+1. Include these capabilities in the first complete delivery:
+   1. Self-hosted account registration.
+   2. Email verification through AWS SES.
+   3. Username/email and password login.
+   4. Thirty-minute access JWTs.
+   5. Rotating database-backed refresh sessions.
+   6. Logout of the current session.
+   7. Logout of every session.
+   8. Forgotten-password and password-reset flows.
+   9. Current-user profile reads and edits.
+   10. Family creation, update, deletion, ownership transfer, and membership administration.
+   11. Exact-identifier Family invitations.
+   12. A maximum of ten Family memberships or owned Families per user.
+   13. One shared current grocery list per Family.
+   14. Purchase completion with purchased, kept, and discarded outcomes.
+   15. Purchase-only shopping history.
+   16. A mobile read cache and an explicit offline warning.
+   17. Terraform-provisioned OCI and Cloudflare infrastructure.
+   18. Ansible-configured AMD Micro virtual machines.
+2. Defer these capabilities from the initial delivery:
+   1. Product, brand, manufacturer, and exact-variant catalogs.
+   2. GTIN or barcode lookup.
+   3. Product image upload or moderation.
+   4. Normalized supermarket chains and physical branches.
+   5. Retailer API integrations.
+   6. Public price comparison.
+   7. Promotion and loyalty-card modeling.
+   8. Push, email, or in-app notification features beyond account verification and password reset.
+   9. WebSockets.
+   10. Dedicated search services.
+   11. Prometheus or a self-hosted metrics stack.
+   12. Application-managed database backup jobs and restore workflows.
+   13. An offline mutation queue or conflict-resolution protocol.
+3. Deliver the React Native application first.
+4. Add the complete authenticated website shortly afterward as a separate client over the same API.
+5. Do not build public marketing, feature, terms, privacy, or support routes during the planned website phase.
+6. Revisit any app-store requirement for a privacy-policy URL before public store distribution, without turning that requirement into a marketing-site project.
+
+## 3. Adopt the final technical stack
+
+1. Use the current supported Go release for the backend.
+2. Use Echo v5 for HTTP routing and middleware.
+3. Use GORM for MySQL queries, row mapping, and explicit transactions.
+4. Never call GORM `AutoMigrate` in application or test startup.
+5. Use a separate root Go module for versioned SQL migrations.
+6. Use `go-playground/validator/v10` as the common HTTP request-structure validator.
+7. Use a maintained JWT library for signing and verification rather than implementing token encoding or cryptography manually.
+8. Use Argon2id from maintained cryptographic packages for password hashing.
+9. Use a maintained Twitter-style Snowflake implementation for identifiers.
+10. Use MySQL HeatWave `MySQL.Free` as the managed transactional database without enabling the analytical accelerator initially.
+11. Use Expo and React Native for the first client.
+12. Use Expo Router for native routes and deep links.
+13. Use TanStack Query for remote state in mobile and the future web client.
+14. Use platform secure storage for access and refresh tokens.
+15. Use lightweight local persistence for the last successful Family/list snapshot.
+16. Use React, Vite, and TanStack Router for the future website.
+17. Do not introduce a JavaScript server or SSR runtime.
+18. Use Cloudflare DNS, TLS, proxying, and Tunnel for public API ingress.
+19. Use OCI Object Storage for Terraform state and any later object-storage requirement.
+20. Use AWS SES only for account verification and password-reset email.
+21. Use Terraform for OCI, Cloudflare, and infrastructure-level AWS SES resources where practical.
+22. Use Ansible for operating-system and service configuration.
+23. Run the API and `cloudflared` as native systemd services in production.
+24. Use Docker and Compose only for local development, integration tests, and migration tooling.
+
+## 4. Create the repository structure
+
+1. Create this root layout incrementally as each phase begins:
+
+   ```text
+   /
+     AGENTS.md
+     ARCHITECTURE.md
+     PLAN.md
+
+     api/
+       openapi.yaml
+
+     backend/
+       go.mod
+       go.sum
+       Dockerfile
+       compose.yml
+       cmd/
+         api/
+           main.go
+       internal/
+         accounts/
+         families/
+         shopping/
+         apierrors/
+         config/
+         platform/
+         repository/
+           mysql/
+         transport/
+           http/
+             handler/
+             middleware/
+             request/
+             response/
+             router/
+             validation/
+
+     migrations/
+       go.mod
+       go.sum
+       Dockerfile
+       compose.yml
+       cmd/
+         migrate/
+           main.go
+       sql/
+
+     mobile/
+
+     web/                    # created only when the website phase begins
+
+     infrastructure/
+       terraform/
+         bootstrap/
+         environments/
+           production/
+         modules/
+       ansible/
+         inventories/
+         playbooks/
+         roles/
+
+     docs/
+       adr/
+       runbooks/
+   ```
+
+2. Organize domain and application behavior by capability rather than by a global service layer:
+
+   ```text
+   backend/internal/accounts/
+     user.go
+     credential.go
+     session.go
+     repository.go
+     service.go
+     errors.go
+
+   backend/internal/families/
+     family.go
+     member.go
+     invitation.go
+     repository.go
+     service.go
+     policy.go
+     errors.go
+
+   backend/internal/shopping/
+     list_item.go
+     trip.go
+     trip_item.go
+     repository.go
+     service.go
+     policy.go
+     errors.go
+   ```
+
+3. Keep all concrete MySQL implementations in one explicitly named adapter package for the current project size:
+
+   ```text
+   backend/internal/repository/mysql/
+     accounts.go
+     families.go
+     shopping.go
+     email_outbox.go
+     audit.go
+     transactions.go
+   ```
+
+4. Define repository interfaces in the capability that consumes them:
+   1. `accounts.Repository` belongs to `accounts`.
+   2. `families.Repository` belongs to `families`.
+   3. `shopping.Repository` belongs to `shopping`.
+5. Give concrete constructors explicit names:
+
+   ```go
+   accountRepository := mysql.NewAccountRepository(db)
+   familyRepository := mysql.NewFamilyRepository(db)
+   shoppingRepository := mysql.NewShoppingRepository(db)
+   ```
+
+6. Make constructors accept interface dependencies and return concrete implementations:
+
+   ```go
+   func NewService(repository Repository, ids IDGenerator, clock Clock) *Service
+   ```
+
+7. Do not return an interface merely to conceal a concrete service or repository.
+8. Define the smallest service interface at the handler that consumes it when handler isolation or mocking requires one.
+9. Inject infrastructure dependencies once through constructors; do not pass repositories into every business method.
+10. Pass `context.Context` and typed application input values into service methods.
+11. Keep the package dependency direction acyclic:
+    1. Capability packages know their own entities, interfaces, and policies.
+    2. MySQL adapters import capability packages to implement their interfaces.
+    3. HTTP transport imports capability types and service-facing interfaces.
+    4. Capability packages never import MySQL or Echo.
+    5. The application composition root imports every concrete package and wires the graph.
+12. Keep GORM tags on persistent capability entities as approved, while keeping HTTP validation and JSON binding on separate request DTOs.
+13. Do not serialize GORM entities directly into HTTP responses.
+
+## 5. Establish identifiers, timestamps, JSON, quantities, and money conventions
+
+1. Give every platform entity a positive Twitter-style Snowflake primary key stored as MySQL `BIGINT` and represented in Go through a dedicated identifier type or validated `int64`.
+2. Fix the Snowflake epoch before creating the first persistent production entity and never change it afterward.
+3. Assign a stable Snowflake node ID from `0` through `1023` to every API process.
+4. Configure the initial API VM with a stable value such as `SNOWFLAKE_NODE_ID=1`.
+5. Never derive a node ID from a public IP address or another ephemeral value.
+6. Fail application startup when the node ID is invalid or unavailable.
+7. Return every entity identifier as a decimal JSON string to avoid JavaScript integer overflow:
+
+   ```json
+   {
+     "id": "241895317264384000",
+     "family_id": "241895500112232448"
+   }
+   ```
+
+8. Parse every incoming path/body identifier as a positive signed 63-bit decimal string.
+9. Reject zero, negative, malformed, and overflowed identifiers with stable errors.
+10. Use `snake_case` for every JSON property.
+11. Use UTC internally and RFC 3339 timestamps in JSON.
+12. Store database timestamps with microsecond precision where supported.
+13. Include `created_at` and `updated_at` on mutable entities, including `users`.
+14. Represent grocery quantities as JSON numbers with at most three decimal places.
+15. Decode quantity tokens through `json.Number` or a custom fixed-decimal type rather than binding through `float64`.
+16. Store quantities in MySQL `DECIMAL(12,3)`.
+17. Use an initial unit enumeration of `each`, `g`, `kg`, `ml`, and `l`.
+18. Store all paid amounts as nonnegative integer cents in `BIGINT` columns such as `total_cents`.
+19. Never use floating point for money.
+20. Treat BRL as the documented deployment-level currency for the one-city product and omit per-row currency until multi-currency support becomes a real requirement.
+
+## 6. Implement request binding and validation consistently
+
+1. Install one `go-playground/validator/v10` instance during application composition.
+2. Register it through Echo's validator integration.
+3. Put validation tags on every HTTP request DTO, including but not limited to:
+   1. `UserCreateRequest`.
+   2. `UserUpdateRequest`.
+   3. `PasswordChangeRequest`.
+   4. `LoginRequest`.
+   5. `RefreshRequest` when the token is supplied in JSON.
+   6. `ForgotPasswordRequest`.
+   7. `ResetPasswordRequest`.
+   8. `FamilyCreateRequest`.
+   9. `FamilyUpdateRequest`.
+   10. `FamilyInvitationCreateRequest`.
+   11. `FamilyMemberUpdateRequest`.
+   12. `FamilyOwnershipTransferRequest`.
+   13. `ShoppingListItemCreateRequest`.
+   14. `ShoppingListItemUpdateRequest`.
+   15. `ShoppingListOrderRequest`.
+   16. `ShoppingListCompleteRequest`.
+4. Use built-in validation tags for simple structural requirements such as `required`, `min`, `max`, `email`, `oneof`, `gt`, and `omitempty`.
+5. Register custom validator tags for reusable formats that built-in tags cannot express cleanly.
+6. Register struct-level validators for mutually exclusive fields and cross-field request relationships.
+7. Validate usernames with this contract:
+   1. Length from 2 through 32 ASCII characters.
+   2. Lowercase `a` through `z`.
+   3. Digits `0` through `9`.
+   4. Hyphen `-`.
+   5. Underscore `_`.
+   6. No spaces or other characters.
+8. Implement the username character check as a registered custom validator rather than a scattered regex.
+9. Define the DTO tag as:
+
+   ```go
+   Username string `json:"username" validate:"required,min=2,max=32,username"`
+   ```
+
+10. Collect every field failure in one validation pass and return all failed fields.
+11. Keep uniqueness, authorization, membership limits, ownership, and transaction invariants in services and database constraints rather than pretending struct tags can enforce them.
+12. Bind into request DTOs only; never bind client JSON directly into GORM entities.
+
+## 7. Standardize the API error contract
+
+1. Return JSON failures through one envelope:
+
+   ```json
+   {
+     "errors": {
+       "code": "INVALID_FORM_BODY",
+       "message": "One or more fields are invalid",
+       "fields": {
+         "email": "Enter a valid email address",
+         "username": "Use 2-32 lowercase letters, digits, hyphens, or underscores"
+       }
+     }
+   }
+   ```
+
+2. Always include a stable `errors.code` in a JSON error.
+3. Let clients branch on `errors.code`, never on human-readable text.
+4. Include `message` when a request-level explanation helps.
+5. Include `fields` only after syntactically valid JSON was successfully bound and individual fields failed validation.
+6. Return malformed JSON without a `fields` object:
+
+   ```json
+   {
+     "errors": {
+       "code": "MALFORMED_JSON",
+       "message": "The request body must contain valid JSON"
+     }
+   }
+   ```
+
+7. Map expected classes consistently:
+   1. `400 Bad Request` for malformed semantics outside field validation and ineligible invitees.
+   2. `401 Unauthorized` for missing, invalid, or expired authentication.
+   3. `403 Forbidden` for authenticated callers without permission and accounts awaiting email verification when required.
+   4. `404 Not Found` for inaccessible or unknown resources when revealing their existence is safe.
+   5. `409 Conflict` for unique conflicts, membership limits, invalid ownership transitions, and incompatible current state.
+   6. `413 Content Too Large` for bounded-body violations.
+   7. `415 Unsupported Media Type` for unsupported content types.
+   8. `422 Unprocessable Content` for parsed request-field validation failures.
+   9. `429 Too Many Requests` for rate limits.
+   10. `500 Internal Server Error` for unexpected application or infrastructure failure.
+   11. `503 Service Unavailable` when a required dependency is unavailable.
+8. Return generic internal messages and never expose SQL, stack traces, credentials, token material, or provider response internals.
+9. Use `204 No Content` for successful commands that intentionally return no representation.
+10. Return direct resource representations rather than unnecessary wrapper keys.
+
+## 8. Build the migration module before repositories
+
+1. Initialize `migrations` as an independent Go module.
+2. Keep its executable at `migrations/cmd/migrate/main.go` without an unnecessary internal runner abstraction.
+3. Make the migration executable:
+   1. Load configuration.
+   2. Open MySQL with bounded timeouts.
+   3. Invoke the selected versioned migration library.
+   4. Emit safe structured logs.
+   5. Exit nonzero on any failure.
+4. Store ordered SQL files under `migrations/sql`.
+5. Give the migration process schema-administration credentials that the API never receives.
+6. Make migrations forward-oriented and compatible with an old and new application binary during deployment transitions.
+7. Do not assume a destructive schema downgrade is safe.
+8. Create separate Docker and Compose files for the migration tool's local and CI execution.
+9. Create an integration-test command that starts real MySQL, applies every migration from empty, and inspects constraints and indexes.
+10. Verify GORM entity mappings against the migrated schema without invoking automatic schema changes.
+
+## 9. Create the initial database schema
+
+1. Create `users` with:
+   1. `id BIGINT` primary key.
+   2. `email VARCHAR(320)` unique and stored in the application's canonical form.
+   3. `username VARCHAR(32)` unique and stored exactly as validated lowercase ASCII.
+   4. `display_name VARCHAR(80)`.
+   5. `email_verified_at DATETIME(6)` nullable.
+   6. `created_at DATETIME(6)`.
+   7. `updated_at DATETIME(6)`.
+   8. `deleted_at DATETIME(6)` nullable when soft account deletion is retained.
+2. Do not create duplicate `email_normalized` or `username_normalized` columns.
+3. Canonicalize email consistently before validation/storage and enforce uniqueness on the stored value.
+4. Create `user_credentials` with:
+   1. Snowflake `id`.
+   2. Unique `user_id` foreign key.
+   3. Argon2id `password_hash`.
+   4. `password_changed_at`.
+   5. `created_at` and `updated_at`.
+5. Create `auth_sessions` with:
+   1. Snowflake `id` used as the JWT session claim.
+   2. `user_id` foreign key.
+   3. Unique `refresh_token_hash`.
+   4. Optional bounded `device_name`.
+   5. `created_at`.
+   6. `last_used_at`.
+   7. `expires_at`.
+   8. Nullable `revoked_at`.
+   9. Nullable `replaced_by_session_id` for refresh rotation.
+6. Create `account_tokens` with:
+   1. Snowflake `id`.
+   2. `user_id` foreign key.
+   3. `purpose` limited to `verify_email` or `reset_password`.
+   4. Unique token hash rather than the raw bearer token.
+   5. `expires_at`.
+   6. Nullable `used_at`.
+   7. `created_at`.
+7. Create `families` with:
+   1. Snowflake `id`.
+   2. `name VARCHAR(80)`.
+   3. Non-null `owner_id` foreign key to `users`.
+   4. `created_at` and `updated_at`.
+   5. Optional `deleted_at` when Family deletion is recoverable within the database.
+8. Do not create a Family revision column.
+9. Do not create an Owner membership row; `families.owner_id` is the authoritative Owner relationship.
+10. Create `family_members` with:
+    1. Snowflake `id`.
+    2. `family_id` foreign key.
+    3. `user_id` foreign key.
+    4. `role` limited to `manager` or `member`.
+    5. `created_at` and `updated_at`.
+    6. Unique `(family_id, user_id)`.
+    7. An index beginning with `user_id` for membership listing and limits.
+11. Create `family_invitations` as pending invitations only, with:
+    1. Snowflake `id`.
+    2. `family_id` foreign key.
+    3. `invited_user_id` foreign key.
+    4. `invited_by_user_id` foreign key.
+    5. `expires_at`.
+    6. `created_at`.
+    7. Unique `(family_id, invited_user_id)`.
+12. Do not store an invitation role; successful acceptance always creates a Member.
+13. Do not store invitation status, response time, or a generated pending guard.
+14. Delete invitation rows when accepted, declined, cancelled, or cleaned up after expiry.
+15. Create `shopping_list_items` with:
+    1. Snowflake `id`.
+    2. `family_id` foreign key.
+    3. Required freeform `name VARCHAR(160)`.
+    4. `quantity DECIMAL(12,3)` with a positive default of one.
+    5. `unit` limited to the approved unit set.
+    6. Nullable `note VARCHAR(500)`.
+    7. `is_checked BOOLEAN`.
+    8. Nullable `purchased_quantity DECIMAL(12,3)` for current shopping input.
+    9. Nullable nonnegative `total_cents BIGINT` for current shopping input.
+    10. `position BIGINT` for stable manual order.
+    11. `added_by_id` foreign key to `users`.
+    12. `updated_by_id` foreign key to `users`.
+    13. `created_at` and `updated_at`.
+16. Do not add an optimistic item-version column; concurrent updates intentionally use last database commit wins.
+17. Create `shopping_trips` only as completed purchase-history headers, with:
+    1. Snowflake `id`.
+    2. `family_id` foreign key.
+    3. Nullable bounded `supermarket_name`.
+    4. `completed_by_id` foreign key to `users`.
+    5. `completed_at`.
+    6. `created_at`.
+18. Do not add trip status, start time, starter, cancellation time, or active-trip constraints.
+19. Create a trip row only when at least one item was purchased.
+20. Create `shopping_trip_items` as immutable purchased-item snapshots, with:
+    1. Snowflake `id`.
+    2. `trip_id` foreign key.
+    3. Non-null `source_item_id` containing the originating current-list ID.
+    4. Snapshotted `name`.
+    5. Snapshotted requested `quantity` and `unit`.
+    6. Snapshotted nullable `note`.
+    7. `added_by_id` identifying who originally added the list entry.
+    8. Nullable actual `purchased_quantity`.
+    9. Nullable nonnegative `total_cents`.
+    10. `created_at`.
+21. Do not require a foreign key from `source_item_id` to the current list because the source row is deleted after a purchase and history must remain immutable.
+22. Create `email_outbox` solely for verification and password-reset email, with:
+    1. Snowflake `id`.
+    2. `user_id`.
+    3. `template` limited to approved account-email templates.
+    4. Recipient email.
+    5. Safe non-secret template data.
+    6. An encrypted short-lived token payload required to construct the verification or reset link.
+    7. Delivery state.
+    8. Attempt count.
+    9. Next attempt time.
+    10. Nullable sent time.
+    11. `created_at` and `updated_at`.
+23. Encrypt the outbox token payload with an application key held outside the database, clear it after successful delivery, and retain only the account-token hash needed for single-use verification.
+24. Create `audit_events` for ownership, role, invitation, Family deletion, account security, and history-correction actions, with:
+    1. Snowflake `id`.
+    2. Nullable actor user ID for system actions.
+    3. Nullable Family ID.
+    4. Stable action code.
+    5. Target type and nullable target ID.
+    6. Safe JSON metadata.
+    7. Request ID.
+    8. `created_at`.
+25. Do not audit every grocery-list keystroke.
+26. Accept the migration library's own schema-history table as infrastructure metadata that does not require a Snowflake identifier.
+
+## 10. Implement self-hosted authentication
+
+1. Create users through `POST /v1/users`, not an authentication-prefixed registration route.
+2. Validate the entire request and return every invalid field.
+3. In the registration transaction:
+   1. Generate the User and credential Snowflake IDs.
+   2. Canonicalize email.
+   3. Validate the username exactly as received.
+   4. Hash the password with configured Argon2id parameters.
+   5. Insert the User and credential.
+   6. Create a hashed email-verification token record.
+   7. Insert an email-outbox job.
+4. Return `201 Created`, a `Location` header, and the direct User representation:
+
+   ```json
+   {
+     "id": "241895317264384000",
+     "email": "user@example.com",
+     "username": "leonardo",
+     "display_name": "Leonardo",
+     "email_verified": false,
+     "created_at": "2026-10-17T12:00:00Z",
+     "updated_at": "2026-10-17T12:00:00Z"
+   }
+   ```
+
+5. Never include a redundant top-level `user` wrapper.
+6. Require successful email verification before ordinary login.
+7. Make verification and reset tokens random, single-use, expiring, and stored only as hashes.
+8. Use AWS SES for delivery through a least-privilege IAM identity restricted to the verified sending identity.
+9. Configure SES domain verification, DKIM, SPF, and DMARC through the owned domain and Cloudflare DNS.
+10. Account for the SES sandbox and complete production-access approval before inviting arbitrary recipient addresses.
+11. Issue a signed access JWT valid for 30 minutes after successful login or refresh.
+12. Put only stable authentication claims in the JWT:
+    1. Subject User ID as a decimal string.
+    2. Session ID as a decimal string.
+    3. Issuer.
+    4. Audience.
+    5. Issued-at time.
+    6. Expiry time.
+    7. Unique token ID.
+13. Do not put Family IDs, ownership, membership roles, or permissions in JWT claims.
+14. Generate a high-entropy opaque refresh token for each session.
+15. Store only its hash in `auth_sessions`.
+16. Rotate the refresh token on every successful refresh and make reuse of a replaced token revoke the affected session chain.
+17. Make normal logout revoke only the current refresh session.
+18. Make logout-all and password reset revoke every refresh session for the User.
+19. Do not persist access JWTs or maintain an access-token denylist.
+20. Accept that an already-issued access JWT may remain usable for at most 30 minutes after logout.
+21. Check current Family ownership or membership in MySQL for every Family-scoped operation, so removing a user takes effect immediately despite JWT lifetime.
+22. Store mobile tokens only in operating-system secure storage, never in the list cache.
+23. Rate-limit registration, login, verification resend, refresh, and password-reset requests without adding a separate cache service.
+
+## 11. Implement Family ownership, roles, and invitations
+
+1. Represent the Owner solely through `families.owner_id`.
+2. Represent non-owner participants in `family_members` with `manager` or `member`.
+3. Return the Owner as part of the member-list API even though the Owner does not have a `family_members` row.
+4. Apply this permission matrix:
+   1. Owner may view and edit the Family and grocery list.
+   2. Owner may invite, remove, promote, and demote Managers and Members.
+   3. Owner may transfer ownership and delete the Family.
+   4. Manager may view and edit the Family and grocery list.
+   5. Manager may invite and remove Members.
+   6. Manager may not change the Owner or another Manager.
+   7. Member may view and edit the shared grocery list.
+   8. Member may not manage membership or Family settings.
+5. Do not expose user search, suggestions, autocomplete, or a general user lookup endpoint.
+6. Accept an invitation target through exactly one of:
+   1. Exact validated username.
+   2. Exact Snowflake User ID string.
+7. Resolve the identifier privately and never return the target user's profile from invitation creation.
+8. Return `204 No Content` after successful invitation creation.
+9. Return the same public `INVITEE_NOT_ELIGIBLE` response for nonexistent, already participating, already invited, over-limit, and otherwise ineligible targets where distinction would enable account enumeration.
+10. Apply per-caller and per-target invitation rate limits.
+11. Accepting an invitation always creates a `member` role.
+12. Promote a Member later through the membership update route.
+13. Enforce a maximum of ten Families per User, counting both:
+    1. Families where `families.owner_id` equals the User.
+    2. Rows in `family_members` for the User.
+14. Enforce the limit inside a transaction that locks the User row before counting and inserting.
+15. Recheck the limit at invitation acceptance even if it was checked at invitation creation.
+16. Create a Family and establish its Owner in one transaction.
+17. Transfer ownership in one transaction:
+    1. Lock the Family.
+    2. Verify `new_owner_id` currently identifies a Manager or Member in the Family.
+    3. Verify ownership and the ten-Family rule.
+    4. Delete the new Owner's membership row.
+    5. Insert the old Owner as a Manager.
+    6. Update `families.owner_id`.
+    7. Record an audit event.
+    8. Commit.
+18. Prevent the Owner from leaving or being removed before ownership transfer.
+19. Prevent a User from appearing simultaneously as `owner_id` and in `family_members` through service logic and integration tests.
+20. Delete pending invitation rows on acceptance, decline, cancellation, or expiry cleanup.
+
+## 12. Implement the current grocery list
+
+1. Treat a Family's current list as the set of rows in `shopping_list_items`; do not create a redundant `shopping_lists` table.
+2. Require a freeform item name so the application remains usable without a product catalog.
+3. Allow optional notes and supported desired quantity/unit values.
+4. Record `added_by_id` at creation and never change it.
+5. Record `updated_by_id` on each edit.
+6. Assign sparse sortable positions so most reorder operations do not require rewriting every row.
+7. Add, edit, check, uncheck, reorder, and delete entries through explicit state assignments.
+8. Do not design a retry-unsafe toggle endpoint.
+9. Permit a checked item to hold nullable actual purchased quantity and total cents before completion.
+10. Clear temporary purchased quantity and cents when an item is unchecked unless the UI explicitly confirms retaining them.
+11. Use last-write-wins for concurrent item changes based on database commit order.
+12. Do not expose record versions or conditional-write headers.
+13. Return `404 LIST_ITEM_NOT_FOUND` when an update arrives after deletion.
+14. Scope every list query by both `family_id` and the item identifier.
+15. Verify the actor's current Family role for every operation.
+
+## 13. Implement completion and purchase-only history
+
+1. Complete the current list through one command endpoint rather than starting, cancelling, or maintaining a persisted active trip.
+2. Accept:
+   1. Optional `supermarket_name`.
+   2. `default_unchecked_action` of `keep` or `discard`.
+   3. Optional per-item overrides for unchecked entries.
+3. Derive `completed_by_id` from the authenticated User rather than accepting it in the request body.
+4. In one MySQL transaction:
+   1. Lock the Family and current list rows in stable order.
+   2. Recheck authorization.
+   3. Partition checked items as purchased.
+   4. Partition unchecked items into keep or discard according to the default and overrides.
+   5. If at least one item was purchased, create one `shopping_trips` history header.
+   6. Copy every purchased item into `shopping_trip_items` as an immutable snapshot.
+   7. Delete purchased source items from the current list.
+   8. Retain kept items while setting `is_checked=false` and clearing temporary purchase data.
+   9. Delete discarded items without placing them in history.
+   10. Record the completion audit event where appropriate.
+   11. Commit atomically.
+5. If no item was purchased, apply keep/discard changes without creating an empty history header.
+6. Never place kept or discarded entries in purchase history.
+7. Never mutate a historical item because its current-list source or future catalog data changed.
+8. Allow corrections to purchase history only through a later explicit, authorized, audited feature; do not silently reuse ordinary list editing.
+
+## 14. Publish the initial HTTP routes
+
+1. Use `/v1` as the business API prefix.
+2. Keep the operational health endpoint outside the versioned resource API:
+
+   ```text
+   GET /health
+   ```
+
+3. Make `/health` return:
+   1. `200` when the process and required database are ready.
+   2. `503` when the process responds but the required database is unavailable.
+   3. No credentials, hostnames, SQL, or internal topology details.
+4. Publish account creation and current-user resources:
+
+   ```text
+   POST   /v1/users
+   GET    /v1/users/me
+   PATCH  /v1/users/me
+   PUT    /v1/users/me/password
+   DELETE /v1/users/me
+   ```
+
+5. Do not publish a general `GET /v1/users/{user_id}` route.
+6. Publish authentication commands:
+
+   ```text
+   POST /v1/auth/login
+   POST /v1/auth/refresh
+   POST /v1/auth/logout
+   POST /v1/auth/logout-all
+   POST /v1/auth/verify-email
+   POST /v1/auth/resend-verification
+   POST /v1/auth/forgot-password
+   POST /v1/auth/reset-password
+   ```
+
+7. Publish Family resources:
+
+   ```text
+   GET    /v1/families
+   POST   /v1/families
+   GET    /v1/families/{family_id}
+   PATCH  /v1/families/{family_id}
+   DELETE /v1/families/{family_id}
+   ```
+
+8. Make `GET /v1/families` return authorized Family summaries in one request rather than putting only Family IDs in the current-user response and causing one request per Family.
+9. Publish membership resources and ownership transfer:
+
+   ```text
+   GET    /v1/families/{family_id}/members
+   PATCH  /v1/families/{family_id}/members/{member_id}
+   DELETE /v1/families/{family_id}/members/{member_id}
+   POST   /v1/families/{family_id}/leave
+   POST   /v1/families/{family_id}/transfer-ownership
+   ```
+
+10. Accept this transfer payload, with `new_owner_id` documented as a User ID:
+
+    ```json
+    {
+      "new_owner_id": "241895615438458880"
+    }
+    ```
+
+11. Publish received- and Family-invitation resources:
+
+    ```text
+    GET    /v1/invitations
+    POST   /v1/invitations/{invitation_id}/accept
+    POST   /v1/invitations/{invitation_id}/decline
+
+    GET    /v1/families/{family_id}/invitations
+    POST   /v1/families/{family_id}/invitations
+    DELETE /v1/families/{family_id}/invitations/{invitation_id}
+    ```
+
+12. Accept exactly one invitation identifier:
+
+    ```json
+    {
+      "username": "exact_username"
+    }
+    ```
+
+    or:
+
+    ```json
+    {
+      "user_id": "241895317264384000"
+    }
+    ```
+
+13. Publish current-list resources:
+
+    ```text
+    GET    /v1/families/{family_id}/shopping-list
+    POST   /v1/families/{family_id}/shopping-list/items
+    PATCH  /v1/families/{family_id}/shopping-list/items/{item_id}
+    DELETE /v1/families/{family_id}/shopping-list/items/{item_id}
+    PUT    /v1/families/{family_id}/shopping-list/items/order
+    POST   /v1/families/{family_id}/shopping-list/complete
+    ```
+
+14. Use a completion request shaped like:
+
+    ```json
+    {
+      "supermarket_name": "Market downtown",
+      "default_unchecked_action": "keep",
+      "unchecked_item_overrides": [
+        {
+          "item_id": "241896015117107200",
+          "action": "discard"
+        }
+      ]
+    }
+    ```
+
+15. Publish purchase-history reads:
+
+    ```text
+    GET /v1/families/{family_id}/shopping-trips
+    GET /v1/families/{family_id}/shopping-trips/{trip_id}
+    ```
+
+16. Do not publish start-trip, active-trip, cancel-trip, product, catalog, offer, supermarket-search, notification, or user-search routes in the initial API.
+
+## 15. Define the API contract and transport behavior
+
+1. Make `api/openapi.yaml` the source of truth for route paths, methods, DTOs, responses, and error codes.
+2. Generate server transport types or interfaces where the chosen Echo tooling supports them cleanly.
+3. Generate the TypeScript API client consumed by mobile and the future website.
+4. Keep generated transport types out of capability entities.
+5. Map request DTOs into typed application inputs explicitly.
+6. Map application results into response DTOs explicitly.
+7. Apply bounded request-body sizes before JSON binding.
+8. Require `application/json` for JSON-body routes.
+9. Reject unknown JSON fields for mutation requests unless a deliberate compatibility policy says otherwise.
+10. Propagate one request ID through Cloudflare, Echo, service logs, audit events, and error logs.
+11. Set authenticated responses to `Cache-Control: private, no-store`.
+12. Return collection results in stable envelopes such as:
+
+    ```json
+    {
+      "families": []
+    }
+    ```
+
+13. Return individual resources directly without an unnecessary type wrapper.
+14. Use opaque cursor pagination for potentially growing history collections.
+15. Keep the current Family list unpaginated while its expected size remains small and measured response size remains safe.
+
+## 16. Build the React Native application
+
+1. Create these authentication screens:
+   1. Login.
+   2. Registration.
+   3. Email verification.
+   4. Resend verification.
+   5. Forgotten password.
+   6. Reset password.
+2. Create these authenticated screens:
+   1. Family list.
+   2. Create Family.
+   3. Current Family grocery list.
+   4. Purchase history list.
+   5. Purchase-history detail.
+   6. Family members.
+   7. Received invitations.
+   8. Family invitations.
+   9. Family settings.
+   10. Account profile.
+   11. Change password.
+   12. Session/logout controls.
+3. Use secure storage for access and refresh tokens.
+4. Refresh the access JWT through the rotating refresh session when the access JWT expires or shortly before expiry.
+5. If refresh fails because the session is expired or revoked, clear secure credentials and return to login.
+6. Cache the last successful Family/list representation locally with:
+   1. Family ID.
+   2. Current item representation.
+   3. `last_checked_at` from the successful fetch time.
+7. Render cached data immediately while attempting an online refresh.
+8. When offline or the API is unreachable:
+   1. Keep showing the cached list.
+   2. Show `Offline · last checked <local time>`.
+   3. Place the warning at the upper-left edge of the grocery-list button in the bottom navigation/footer as requested.
+   4. Make it visually clear that the displayed data may be stale.
+   5. Disable authoritative mutations or fail them before changing the displayed server state.
+9. Do not queue offline mutations in the initial implementation.
+10. Trigger refresh on app launch, foreground, reconnect, pull-to-refresh, and successful mutation.
+11. Keep screen and router code native rather than sharing complete UI with the future DOM application.
+12. Share generated API types, API client behavior, validation-derived presentation rules, query keys, money helpers, quantity helpers, translation keys, and design tokens where valuable.
+13. Do not add a notification settings screen or request notification permissions.
+
+## 17. Plan the near-future authenticated website
+
+1. Create the `web` workspace only after the initial API and mobile critical path are stable.
+2. Use React, Vite, TanStack Router, TanStack Query, strict TypeScript, and the generated API client.
+3. Enable route-level code splitting and keep account, Family, list, and history screens in separate route chunks where useful.
+4. Implement these browser routes:
+
+   ```text
+   /
+   /login
+   /register
+   /verify-email
+   /forgot-password
+   /reset-password
+
+   /app
+   /app/families
+   /app/families/new
+   /app/families/{family_id}/list
+   /app/families/{family_id}/history
+   /app/families/{family_id}/history/{trip_id}
+   /app/families/{family_id}/members
+   /app/families/{family_id}/invitations
+   /app/families/{family_id}/settings
+   /app/account
+   ```
+
+5. Make `/` inspect the local authentication state and redirect:
+   1. Authenticated users to `/app`.
+   2. Unauthenticated users to `/login`.
+6. Make `/app` redirect to the last active Family list or the Family chooser.
+7. Deploy the static Vite build on Cloudflare Pages.
+8. Configure Pages rewrites for dynamic application routes.
+9. Do not add SSR, server actions, a frontend backend, or duplicated authorization logic.
+10. Make the website fully functional for the current account, Family, membership, list, completion, and history scope rather than a reduced landing page.
+
+## 18. Provision Terraform state safely
+
+1. Create a small `infra/terraform/bootstrap` stack that creates the OCI Object Storage bucket used for Terraform state.
+2. Keep bootstrap state separate from the main production stack.
+3. Enable state-bucket versioning because Terraform state is infrastructure control data, not an application-data backup feature.
+4. Configure the production root with:
+
+   ```hcl
+   terraform {
+     backend "oci" {}
+   }
+   ```
+
+5. Commit `backend.oci.tfbackend.example` containing placeholders only.
+6. Ignore the real `backend.production.tfbackend` file.
+7. Put bucket, namespace, region, state key, and a non-secret OCI profile name in the backend configuration.
+8. Keep API private keys, fingerprints where avoidable, and other credentials in OCI configuration, environment variables, or CI secrets rather than committed files.
+9. Initialize production with:
+
+   ```text
+   terraform init -backend-config=backend.production.tfbackend
+   ```
+
+10. Use remote state locking supplied by the OCI backend.
+11. Restrict state-bucket IAM to the identities that plan or apply infrastructure.
+
+## 19. Provision the OCI network and AMD Micro compute
+
+1. Create one VCN, initially using a layout such as:
+   1. VCN `10.0.0.0/16`.
+   2. Public VM subnet `10.0.1.0/24`.
+   3. Private MySQL subnet `10.0.2.0/24`.
+2. Create an Internet Gateway and public-subnet route for VM outbound access.
+3. Do not create a potentially billable NAT Gateway for the initial topology.
+4. Query OCI availability domains at the production root through `oci_identity_availability_domains`.
+5. Select the AD using `availability_domain_index` from `terraform.tfvars` rather than hard-coding a tenancy-specific name.
+6. Validate the index against the returned AD list and support single-AD regions.
+7. Recognize that the AD data source lists domains but cannot guarantee E2 Micro capacity.
+8. If OCI reports capacity failure, change the configured AD index and apply again.
+9. Create only `VM.Standard.E2.1.Micro` application instances in the approved compute module.
+10. Assign each VM:
+    1. A stable private IPv4.
+    2. A public IPv4.
+    3. The compute NSG.
+    4. The MySQL-client NSG when the VM is authorized to access MySQL.
+    5. An SSH public key.
+    6. A stable Snowflake node ID delivered through configuration management.
+11. Expose an `admin_ipv4_cidr` variable in `terraform.tfvars.example`.
+12. Recommend a single-host value such as `203.0.113.10/32` for administrator access.
+13. Permit inbound TCP 22 only from `admin_ipv4_cidr`.
+14. Do not permit public inbound TCP 80, 443, 8080, or MySQL.
+15. Bind Echo to `127.0.0.1:8080`.
+16. Use outbound-only Cloudflare Tunnel connectivity from `cloudflared` to publish the API domain.
+17. Create a dedicated MySQL-client NSG and attach it to every authorized VM VNIC.
+18. Configure the MySQL NSG to permit stateful TCP 3306 from the MySQL-client NSG, not from a public CIDR and not from the entire subnet.
+19. Give the MySQL DB system a private endpoint only.
+20. Require TLS and a least-privilege API database user.
+21. Do not expose MySQL directly to the administrator's home IPv4.
+22. Allow additional VMs to access MySQL by attaching the approved client NSG rather than broadening the database rule.
+23. Use Terraform outputs for VM public IPs, private IPs, and safe operational identifiers.
+24. Keep real `terraform.tfvars` ignored and commit only `terraform.tfvars.example`.
+25. Put no database, AWS, Cloudflare, tunnel, or private-key secret in committed tfvars.
+
+## 20. Provision Cloudflare, SES, and storage boundaries
+
+1. Use the purchased domain with hostnames such as:
+   1. `api.example.com` for Cloudflare Tunnel to the Go API.
+   2. `example.com` for the future web application.
+   3. `www.example.com` as an optional redirect to the apex when the website exists.
+2. Create a named Cloudflare Tunnel and DNS record for the API.
+3. Configure the tunnel origin as `http://127.0.0.1:8080`.
+4. Disable caching for authenticated API responses.
+5. Use Cloudflare edge protections and bounded application rate limits without moving business authorization to Cloudflare.
+6. Create or verify the AWS SES domain identity.
+7. Publish SES DKIM, SPF, and DMARC DNS records through the Cloudflare Terraform provider where supported.
+8. Restrict AWS credentials to the minimum SES send actions and verified identity.
+9. Store AWS runtime credentials outside Terraform source and outside application logs.
+10. Use OCI Object Storage rather than a Cloudflare media store.
+11. Do not provision a product-media bucket until product media is actually implemented.
+12. Keep GCP regional object storage as a documented alternative, not a simultaneously provisioned dependency.
+
+## 21. Configure the VM with Ansible
+
+1. Use a supported minimal Linux distribution compatible with E2 Micro and the selected OCI image.
+2. Create a locked-down non-root `ostos` service user.
+3. Configure the host firewall to align with NSG intent.
+4. Install and configure `cloudflared` as a systemd service.
+5. Install the prebuilt AMD64 Go API binary into versioned release directories.
+6. Store runtime configuration in root-owned files unreadable by ordinary users.
+7. Create an `ostos-api.service` systemd unit with:
+   1. Restart policy.
+   2. Resource and file-system hardening that fits the application.
+   3. Environment file reference.
+   4. Bounded startup and shutdown times.
+8. Switch deployments through an atomic `current` symlink.
+9. Retain the immediately previous binary release for application rollback.
+10. Configure bounded journald storage suitable for a one-gigabyte VM.
+11. Do not compile application artifacts on the VM.
+12. Do not install a production container engine, reverse proxy, metrics server, search server, or extra database.
+13. Verify Ansible convergence by running it twice and confirming the second run produces no unintended changes.
+
+## 22. Implement security and privacy controls
+
+1. Verify JWT signature, algorithm, issuer, audience, expiry, and not-before constraints.
+2. Keep JWT signing keys outside source control and support controlled key rotation.
+3. Check Family ownership or membership from MySQL for every Family-scoped operation.
+4. Require recent password confirmation or equivalent recent authentication before password change, account deletion, or sensitive session revocation where appropriate.
+5. Use exact allowed CORS origins; never combine credentialed requests with a wildcard origin.
+6. Use parameterized GORM queries and explicitly scoped conditions.
+7. Set context deadlines on HTTP, MySQL, SES, and Cloudflare-facing operations.
+8. Configure a small MySQL connection pool appropriate for E2 Micro and the free database.
+9. Trust Cloudflare client-IP headers only because direct public application ingress is closed, and configure Echo trusted-proxy behavior explicitly.
+10. Hash passwords, refresh tokens, verification tokens, and reset tokens with the algorithm appropriate to each secret type.
+11. Never log passwords, JWTs, refresh tokens, invitation request bodies containing exact identifiers, verification/reset tokens, AWS credentials, database credentials, or Terraform state.
+12. Audit ownership, role, invitation, Family deletion, password/security, and history-correction events.
+13. Collect only account and grocery-list data necessary for the application.
+14. Do not collect continuous user location.
+15. Clear cached Family data and secure credentials on logout.
+16. Implement account deletion constraints so an Owner must transfer or delete owned Families first.
+17. Document that the initial application has no recovery guarantee for lost or corrupted database data.
+18. Leave any no-cost provider-managed database protection enabled when available, but do not claim it as an application recovery design.
+19. Protect MySQL and Terraform-managed critical resources from accidental destruction through reviewed lifecycle controls where practical.
+
+## 23. Add lightweight observability and operations
+
+1. Use Go `slog` structured JSON logs.
+2. Include safe fields such as:
+   1. Request ID.
+   2. Method.
+   3. Route template rather than raw secret-bearing URL.
+   4. Status code.
+   5. Duration.
+   6. Safe User ID when authenticated.
+   7. Stable error code.
+3. Keep `/health` inexpensive and bounded.
+4. Use OCI instance metrics and Cloudflare request analytics already available within the selected services.
+5. Configure alerts only for immediately useful conditions such as VM unreachability, disk pressure, repeated process restart, and health failure.
+6. Use systemd and journald for service status and logs.
+7. Write runbooks for:
+   1. Deployment.
+   2. Binary rollback.
+   3. Lost VM recreation.
+   4. Database connection failure.
+   5. Leaked JWT signing key.
+   6. Leaked refresh token.
+   7. Compromised SES credentials.
+   8. Ownership recovery through controlled database administration.
+8. Do not add a standalone metrics stack until measured operational needs justify it.
+
+## 24. Establish CI and delivery gates
+
+1. Run backend gates:
+   1. `gofmt` verification.
+   2. `go vet`.
+   3. Selected static analysis.
+   4. Dependency vulnerability scanning.
+   5. Unit tests.
+   6. Race tests where compatible with the suite.
+   7. Real-MySQL integration tests.
+2. Run migration gates:
+   1. Build the independent migration module.
+   2. Apply every migration to an empty real MySQL instance.
+   3. Verify expected schema constraints.
+   4. Run GORM repository compatibility tests.
+3. Run API-contract gates:
+   1. Lint OpenAPI.
+   2. Detect breaking contract changes.
+   3. Regenerate server/client types.
+   4. Fail when generated files differ from committed output.
+4. Run mobile gates:
+   1. Formatting and linting.
+   2. Strict TypeScript checking.
+   3. Unit and component tests.
+   4. Build verification.
+   5. Critical-device flows.
+5. Run future web gates only after the web phase begins:
+   1. Formatting and linting.
+   2. Strict type checking.
+   3. Unit/component tests.
+   4. Production build.
+   5. Playwright critical journeys.
+   6. Route-refresh verification.
+6. Run infrastructure gates:
+   1. `terraform fmt -check`.
+   2. `terraform validate`.
+   3. Reviewed saved production plan.
+   4. Checks that reject unapproved compute shapes and public database access.
+   5. Ansible syntax and lint checks.
+   6. Repeated Ansible convergence test against an ephemeral host where practical.
+7. Build the Linux AMD64 API artifact in CI, never on the production VM.
+8. Use this deployment order:
+   1. Review and apply Terraform when infrastructure changed.
+   2. Run Ansible when host state changed.
+   3. Apply forward database migrations.
+   4. Upload the versioned API artifact.
+   5. Atomically switch the active binary.
+   6. Restart the API.
+   7. Run health and external smoke tests.
+   8. Roll back the binary when the application fails while leaving forward-compatible schema changes intact.
+
+## 25. Test the critical backend paths exhaustively
+
+1. Test validation behavior:
+   1. Every request DTO invokes `go-playground/validator`.
+   2. Every invalid field is returned together.
+   3. Malformed JSON returns code and message without fields.
+   4. Username length boundaries of 1, 2, 32, and 33.
+   5. Allowed lowercase letters, digits, hyphen, and underscore.
+   6. Rejection of uppercase, spaces, Unicode, and punctuation outside the approved set.
+2. Test account behavior:
+   1. Canonical email uniqueness.
+   2. Username uniqueness under concurrent registration.
+   3. Argon2id hashing and verification.
+   4. Verification expiry, single use, and resend.
+   5. Login rejection before verification.
+   6. Generic invalid-credential errors.
+   7. Password-reset expiry and single use.
+   8. Password reset revokes all refresh sessions.
+3. Test JWT and refresh behavior:
+   1. Required claims and 30-minute expiry.
+   2. Algorithm, issuer, audience, signature, expiry, and not-before rejection.
+   3. Refresh-token hash storage.
+   4. Rotation replaces the previous token.
+   5. Reuse detection revokes the affected session chain.
+   6. Current-session logout.
+   7. All-session logout.
+   8. No Family roles present in JWT claims.
+4. Test Family invariants:
+   1. Family creation establishes one Owner.
+   2. Owner appears in the members response without a membership row.
+   3. Owner cannot leave or be removed.
+   4. Manager cannot alter Owner or Manager roles.
+   5. Member cannot manage hierarchy.
+   6. Ownership transfer removes the new Owner's membership and inserts the old Owner as Manager.
+   7. Failed transfer rolls back every row.
+   8. A User cannot be Owner and member of the same Family.
+   9. Cross-Family resource access is rejected.
+5. Test the ten-Family limit with real concurrent transactions:
+   1. A tenth Family succeeds.
+   2. An eleventh Family fails.
+   3. An invitation accepted at the limit fails.
+   4. Two concurrent joins from nine total result in exactly ten.
+6. Test invitation behavior:
+   1. Exact username invitation.
+   2. Exact User ID invitation.
+   3. Both identifiers supplied fails validation.
+   4. Neither supplied fails validation.
+   5. No user-search route exists.
+   6. Ineligible targets receive the same public response.
+   7. Duplicate pending invitations are rejected.
+   8. Acceptance creates a Member and deletes the invitation.
+   9. Decline and cancellation delete the invitation.
+   10. Expired invitations cannot be accepted.
+7. Test grocery-list behavior:
+   1. Add, edit, check, uncheck, reorder, and delete.
+   2. Quantity parsing never passes through binary floating point.
+   3. Money remains integer cents.
+   4. `added_by_id` is stable.
+   5. Last committed concurrent edit wins.
+   6. Update after deletion returns not found.
+   7. Every query enforces Family scope.
+8. Test completion and history:
+   1. Purchased items create immutable history and leave the current list.
+   2. Kept items remain, become unchecked, clear temporary purchase fields, and do not enter history.
+   3. Discarded items leave the list and do not enter history.
+   4. Per-item override beats the default unchecked action.
+   5. Zero purchased items create no empty history header.
+   6. Header and purchased snapshots commit atomically.
+   7. History retains item text, quantities, cents, original adder, and completer after source deletion.
+   8. Concurrent completion attempts cannot create duplicate purchase histories.
+   9. Completion racing a list mutation yields a deterministic result without partial loss.
+9. Require complete branch coverage for permission, ownership, membership-limit, token-rotation, completion, and money-handling paths.
+
+## 26. Test the clients and infrastructure
+
+1. Test the mobile critical journey:
+   1. Register.
+   2. Verify email.
+   3. Log in.
+   4. Create a Family.
+   5. Invite by exact identifier.
+   6. Accept invitation.
+   7. Add and edit list entries.
+   8. Check purchased entries and enter quantity/cents.
+   9. Complete with keep/discard choices.
+   10. Read purchase history.
+   11. Transfer ownership.
+   12. Log out current and all sessions.
+2. Test mobile cache behavior:
+   1. Successful snapshot persistence.
+   2. Offline app start.
+   3. Correct last-checked time.
+   4. Warning placement and accessibility.
+   5. Mutation controls do not falsely report offline success.
+   6. Reconnect refresh.
+   7. Logout cache cleanup.
+3. Test future web direct navigation and browser refresh for every dynamic route once implemented.
+4. Test infrastructure behavior:
+   1. AD discovery and index validation.
+   2. E2 Micro is the only approved shape.
+   3. VM receives public IPv4.
+   4. SSH permits only `admin_ipv4_cidr`.
+   5. Public application ports remain closed.
+   6. Tunnel reaches loopback API.
+   7. MySQL has no public endpoint.
+   8. Authorized VM VNICs reach MySQL through the client NSG.
+   9. Unapproved VNICs cannot reach MySQL.
+   10. MySQL requires TLS and least-privilege credentials.
+   11. Terraform backend locking operates correctly.
+   12. The AMD64 artifact starts within E2 Micro resource limits.
+
+## 27. Execute the implementation phases in order
+
+1. Phase 0 — Freeze contracts and risks:
+   1. Finalize this plan and reconcile `ARCHITECTURE.md` before behavior implementation.
+   2. Record durable decisions as ADRs for authentication, ownership representation, purchase-only history, and infrastructure topology.
+   3. Confirm OCI home-region availability of `MySQL.Free` and `VM.Standard.E2.1.Micro`.
+   4. Confirm the selected domain is active in Cloudflare.
+   5. Confirm the AWS account and target SES region.
+   6. Freeze Snowflake epoch and node allocation.
+   7. Freeze JSON, ID, error, quantity, cents, and timestamp conventions.
+   8. Exit only when external dependencies and conventions have executable proofs or documented operator steps.
+2. Phase 1 — Scaffold the repository:
+   1. Initialize the approved root directories and independent Go modules.
+   2. Create the OpenAPI source.
+   3. Create shared lint/test commands.
+   4. Add local MySQL Compose services.
+   5. Add CI skeletons without deploying anything.
+   6. Exit when every module builds and the empty validation pipeline is green.
+3. Phase 2 — Prove infrastructure:
+   1. Bootstrap the OCI state bucket.
+   2. Configure the OCI backend file pattern.
+   3. Build network, NSG, MySQL, compute, Tunnel, and DNS modules.
+   4. Query and select the availability domain.
+   5. Prove SSH is restricted to the configured `/32`.
+   6. Prove an authorized VM can connect privately to MySQL over TLS.
+   7. Prove no public API or database socket is exposed.
+   8. Exit when Terraform and network security tests are green.
+4. Phase 3 — Implement schema and backend foundations:
+   1. Build the migration executable.
+   2. Create current-scope SQL migrations.
+   3. Implement configuration, Snowflake generation, clocks, request IDs, structured logging, database connection, transactions, and error mapping.
+   4. Integrate `go-playground/validator` with custom username and struct-level validators.
+   5. Implement `/health`.
+   6. Exit when migrations apply to real MySQL and foundational tests are green.
+5. Phase 4 — Implement accounts and sessions:
+   1. Implement User, credential, account-token, session, and email-outbox repositories.
+   2. Implement registration and direct User responses.
+   3. Implement verification and resend.
+   4. Integrate SES delivery.
+   5. Implement login, 30-minute access JWTs, refresh rotation, current logout, logout-all, and password reset.
+   6. Implement `/v1/users/me` reads, edits, password change, and deletion constraints.
+   7. Exit when all authentication and session critical paths are green against real MySQL.
+6. Phase 5 — Implement Families and hierarchy:
+   1. Implement Family ownership and membership repositories.
+   2. Implement the permission policy.
+   3. Implement Family CRUD.
+   4. Implement the ten-Family limit and concurrent test.
+   5. Implement exact-identifier invitations.
+   6. Implement accept, decline, cancel, expiry cleanup, role changes, leave, removal, and ownership transfer.
+   7. Implement relevant audit events.
+   8. Exit when the complete role and invariant matrix is green.
+7. Phase 6 — Implement list, completion, and history:
+   1. Implement current-list repositories and services.
+   2. Implement add, edit, check, uncheck, reorder, and delete.
+   3. Implement actual quantity and cents entry.
+   4. Implement atomic completion and purchase-only history.
+   5. Implement history listing and detail.
+   6. Run concurrency tests around completion and list mutation.
+   7. Exit when purchased/keep/discard behavior is fully covered and green.
+8. Phase 7 — Implement the mobile application:
+   1. Implement account and session flows.
+   2. Implement Family chooser and hierarchy administration.
+   3. Implement list planning and shopping UI.
+   4. Implement completion choices and purchase history.
+   5. Implement secure token storage.
+   6. Implement read cache and offline warning.
+   7. Run the complete critical-device journey.
+   8. Exit when the mobile acceptance journey is green on supported platforms.
+9. Phase 8 — Deploy the initial production system:
+   1. Complete Ansible roles.
+   2. Configure SES production sending.
+   3. Build and sign/version the AMD64 binary artifact.
+   4. Apply migrations.
+   5. Deploy API and Tunnel services.
+   6. Run external health, authentication, Family, and list smoke tests.
+   7. Invite only the intended small initial audience.
+   8. Exit when the system is reproducibly deployable from Terraform, Ansible, migrations, and a versioned artifact.
+10. Phase 9 — Add the complete website:
+    1. Create the Vite/TanStack Router application.
+    2. Implement all approved authenticated routes and account routes.
+    3. Reuse the generated client and shared platform-neutral packages.
+    4. Deploy on Cloudflare Pages.
+    5. Verify direct refresh and dynamic-route fallbacks.
+    6. Exit when web users can perform every current account, Family, list, completion, and history action.
+
+## 28. Preserve the future catalog and price-comparison direction
+
+1. Start future catalog work only after the current product is stable and used.
+2. Keep these future concepts distinct:
+   1. Category, such as soap.
+   2. Brand, such as Dove.
+   3. Organization or manufacturer, such as a brand owner.
+   4. Product family.
+   5. Exact sellable variant with package size and optional GTIN.
+   6. Retailer-specific listing.
+   7. Physical supermarket branch.
+   8. Time-stamped assortment assertion.
+   9. Time-bounded offer and promotion.
+3. Keep a freeform grocery-list name even after a catalog exists.
+4. Resolve a freeform request to an exact purchased variant only when the shopper selects or scans one.
+5. Model bottle or package size on the exact variant, not on a generic category.
+6. Store future media in OCI Object Storage with provenance, licensing, content hashes, dimensions, and moderation metadata.
+7. Never scrape or hotlink retailer images without contractual rights.
+8. Integrate only one retailer provider first through a provider adapter and reviewed mapping table.
+9. Match future provider products in this order:
+   1. Exact validated GTIN.
+   2. Existing reviewed provider mapping.
+   3. Brand/name/package candidates requiring review.
+   4. Manual mapping.
+10. Never merge products automatically merely because their titles look similar.
+11. Treat missing retailer data as unknown, not automatically out of stock.
+12. Display source, branch, retrieval time, validity, promotion conditions, and freshness with every future comparison.
+13. Add the HeatWave analytical accelerator only after a measured analytical query demonstrates value.
+14. Add public product or price pages only when catalog quality and acquisition value justify revisiting public website routes.
+
+## 29. Accept the system only when the current scope is complete
+
+1. Verify account creation returns a direct User representation with string Snowflake IDs and `snake_case` JSON.
+2. Verify all request DTOs use the shared validator and malformed JSON has no field map.
+3. Verify email verification, login, refresh rotation, current logout, logout-all, and password reset.
+4. Verify access JWTs last 30 minutes and contain no Family authorization.
+5. Verify current database authorization takes effect immediately after member removal.
+6. Verify a User cannot exceed ten owned/joined Families under concurrent operations.
+7. Verify every Family has one Owner through `owner_id` and only Manager/Member membership roles.
+8. Verify invitations require an exact username or ID and expose no user-discovery surface.
+9. Verify the current list supports all planned mutations with last-write-wins behavior.
+10. Verify completion stores only purchased items in history, keeps selected unchecked entries, and deletes discarded entries.
+11. Verify item adder and purchase completer attribution survives in history.
+12. Verify zero purchased items produce no empty history row.
+13. Verify mobile cache and offline warning behavior.
+14. Verify the API VM is E2 Micro, publicly addressable only for restricted SSH, and reached publicly for the API only through Cloudflare Tunnel.
+15. Verify every authorized VM can access private MySQL through NSG membership and unauthorized VMs cannot.
+16. Verify migrations are independent from the API and GORM never changes schema automatically.
+17. Verify Terraform, Ansible, backend, migrations, mobile, and infrastructure checks are green.
+18. Verify documentation matches the implemented routes, entities, permissions, infrastructure, limitations, and deferred scope.

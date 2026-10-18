@@ -1,0 +1,25 @@
+# Local secrets and configuration
+.env
+.env.*
+!.env.example
+
+# Go build/test outputs
+*.exe
+*.test
+coverage.out
+
+# JavaScript dependencies and caches
+node_modules/
+.npm/
+
+# Infrastructure state and generated plans
+*.tfstate
+*.tfstate.*
+*.tfplan
+.terraform/
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
