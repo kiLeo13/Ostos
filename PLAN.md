@@ -1,7 +1,7 @@
 # Ostos implementation plan
 
 Status: approved implementation baseline  
-Last reconciled: 2026-10-17  
+Last reconciled: 2026-10-18
 Initial delivery: React Native application and Go API  
 Near-future delivery: complete authenticated web application
 
@@ -403,6 +403,8 @@ This document is the implementation authority for Ostos. It records later approv
 8. Finish mobile when automated/component tests and supported-device journeys cover registration through verification, Family creation/invitation acceptance, list editing, purchase completion, history, ownership transfer, logout, airplane-mode launch, process death, restart, reconnect, cache timestamps, offline warning accessibility, and cache cleanup.
 
 ## 6. Provision and deploy the production system
+
+Implementation status: automation is implemented; the operator must still apply it and record the live-cloud acceptance checks before step 7.
 
 1. Keep OCI usage within Always Free: one `MySQL.Free` DB system and only `VM.Standard.E2.1.Micro` AMD application instances. The initial deployment needs one VM, but the network rules must support another authorized VM without exposing MySQL.
 2. Bootstrap an OCI Object Storage bucket under `infra/terraform/bootstrap`, then configure the production root with the native backend:
