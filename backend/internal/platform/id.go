@@ -61,6 +61,15 @@ func (id *ID) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// ParseID parses a positive decimal string into a Snowflake ID.
+func ParseID(raw string) (ID, error) {
+	value, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || value <= 0 {
+		return 0, errors.New("ID must be a positive decimal string")
+	}
+	return ID(value), nil
+}
+
 func (id ID) Value() (driver.Value, error) {
 	if id <= 0 {
 		return nil, errors.New("ID must be positive")
@@ -101,6 +110,11 @@ type Clock interface {
 type systemClock struct{}
 
 func (systemClock) Now() time.Time { return time.Now() }
+
+// SystemClock supplies the current wall clock to application services.
+type SystemClock struct{}
+
+func (SystemClock) Now() time.Time { return time.Now().UTC() }
 
 // IDGenerator creates entity identifiers.
 type IDGenerator interface {

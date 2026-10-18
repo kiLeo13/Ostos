@@ -7,7 +7,7 @@ services:
       MYSQL_PASSWORD: local_app_only
       MYSQL_ROOT_PASSWORD: local_root_only
     ports:
-      - "3306:3306"
+      - "${OSTOS_MYSQL_PORT:-3306}:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-plocal_root_only"]
       interval: 2s
