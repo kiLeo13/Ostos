@@ -46,7 +46,7 @@ func TestOpenConnectsToMigratedRealMySQLWithoutSchemaMutation(t *testing.T) {
 	`).Scan(&capabilityTableCount); err != nil {
 		t.Fatalf("inspect capability tables: %v", err)
 	}
-	if capabilityTableCount != 0 {
-		t.Fatalf("foundation unexpectedly created %d capability tables", capabilityTableCount)
+	if capabilityTableCount != 12 {
+		t.Fatalf("account, Family, and shopping table count = %d, want 12", capabilityTableCount)
 	}
 }
