@@ -1,0 +1,108 @@
+---
+- name: Install Cloudflare Origin CA certificate
+  ansible.builtin.copy:
+    content: "{{ vault_ostos_origin_certificate }}"
+    dest: /etc/ostos/tls/origin.crt
+    owner: root
+    group: ostos
+    mode: "0644"
+  no_log: true
+  notify: Restart Ostos API
+
+- name: Install Cloudflare Origin CA private key
+  ansible.builtin.copy:
+    content: "{{ vault_ostos_origin_private_key }}"
+    dest: /etc/ostos/tls/origin.key
+    owner: root
+    group: ostos
+    mode: "0640"
+  no_log: true
+  notify: Restart Ostos API
+
+- name: Install restricted runtime environment
+  ansible.builtin.template:
+    src: runtime.env.j2
+    dest: /etc/ostos/runtime.env
+    owner: root
+    group: ostos
+    mode: "0640"
+  no_log: true
+  notify: Restart Ostos API
+
+- name: Install production Compose definition
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../backend/compose.production.yml"
+    dest: /etc/ostos/compose.yml
+    owner: root
+    group: ostos
+    mode: "0640"
+  notify: Restart Ostos API
+
+- name: Install immutable deployment selector
+  ansible.builtin.copy:
+    dest: /etc/ostos/deploy.env
+    owner: root
+    group: ostos
+    mode: "0640"
+    content: "OSTOS_API_IMAGE={{ ostos_api_image }}\n"
+  notify: Restart Ostos API
+
+- name: Upload versioned API image archive
+  ansible.builtin.copy:
+    src: "{{ ostos_api_archive_local }}"
+    dest: "/var/lib/ostos/images/{{ ostos_api_version }}.tar.gz"
+    owner: ostos
+    group: ostos
+    mode: "0640"
+  notify:
+    - Load versioned API image
+    - Restart Ostos API
+
+- name: Find retained API archives
+  ansible.builtin.find:
+    paths: /var/lib/ostos/images
+    patterns: "*.tar.gz"
+    file_type: file
+  register: api_archives
+
+- name: Retain only current and previous API archives
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ (api_archives.files | sort(attribute='mtime', reverse=true))[2:] }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: Check whether the selected API image is loaded
+  ansible.builtin.command: "docker image inspect {{ ostos_api_image }}"
+  register: api_image_inspect
+  changed_when: api_image_inspect.rc != 0
+  failed_when: false
+  notify: Load versioned API image
+
+- name: Apply pending image and configuration handlers before health verification
+  ansible.builtin.meta: flush_handlers
+
+- name: Deploy Ostos API
+  ansible.builtin.command:
+    cmd: docker compose --env-file /etc/ostos/deploy.env -f /etc/ostos/compose.yml up -d --remove-orphans
+  register: api_compose_up
+  changed_when: >-
+    'Started' in (api_compose_up.stdout + api_compose_up.stderr) or
+    'Recreated' in (api_compose_up.stdout + api_compose_up.stderr) or
+    'Created' in (api_compose_up.stdout + api_compose_up.stderr)
+
+- name: Wait for healthy API container
+  ansible.builtin.command: docker inspect --format={{ '{{' }}.State.Health.Status{{ '}}' }} ostos-api
+  register: api_health
+  changed_when: false
+  retries: 12
+  delay: 5
+  until: api_health.stdout == "healthy"
+
+- name: Enable local production health timer
+  ansible.builtin.systemd_service:
+    name: ostos-local-health.timer
+    enabled: true
+    state: started
+    daemon_reload: true
