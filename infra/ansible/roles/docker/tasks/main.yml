@@ -1,0 +1,33 @@
+---
+- name: Install Docker repository prerequisites
+  ansible.builtin.dnf:
+    name:
+      - dnf-plugins-core
+      - iptables
+    state: present
+
+- name: Configure the Docker CE repository
+  ansible.builtin.yum_repository:
+    name: docker-ce-stable
+    description: Docker CE Stable
+    baseurl: "https://download.docker.com/linux/centos/$releasever/$basearch/stable"
+    enabled: true
+    gpgcheck: true
+    gpgkey: https://download.docker.com/linux/centos/gpg
+
+- name: Install pinned Docker Engine and Compose
+  ansible.builtin.dnf:
+    name:
+      - "docker-ce-{{ docker_ce_version }}"
+      - "docker-ce-cli-{{ docker_ce_version }}"
+      - containerd.io
+      - docker-buildx-plugin
+      - "docker-compose-plugin-{{ docker_compose_version }}"
+    state: present
+    allow_downgrade: false
+
+- name: Enable Docker Engine
+  ansible.builtin.systemd_service:
+    name: docker
+    enabled: true
+    state: started
