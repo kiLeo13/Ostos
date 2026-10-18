@@ -1,0 +1,7 @@
+---
+- name: Apply Docker firewall
+  ansible.builtin.systemd_service:
+    name: ostos-docker-firewall.service
+    enabled: true
+    daemon_reload: true
+    state: restarted

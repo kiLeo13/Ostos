@@ -1,0 +1,83 @@
+---
+- name: Install and enable firewalld
+  ansible.builtin.dnf:
+    name: firewalld
+    state: present
+
+- name: Enable firewalld
+  ansible.builtin.systemd_service:
+    name: firewalld
+    enabled: true
+    state: started
+
+- name: Permit restricted SSH before changing the default zone
+  ansible.posix.firewalld:
+    zone: drop
+    rich_rule: "rule family=ipv4 source address={{ admin_ipv4_cidr }} port port=22 protocol=tcp accept"
+    permanent: true
+    immediate: true
+    state: enabled
+
+- name: Permit HTTPS from reviewed Cloudflare networks
+  ansible.posix.firewalld:
+    zone: drop
+    rich_rule: "rule family=ipv4 source address={{ item }} port port=443 protocol=tcp accept"
+    permanent: true
+    immediate: true
+    state: enabled
+  loop: "{{ cloudflare_ipv4_cidrs }}"
+
+- name: Attach the primary network interface to the drop zone
+  ansible.posix.firewalld:
+    zone: drop
+    interface: "{{ ansible_default_ipv4.interface }}"
+    permanent: true
+    immediate: true
+    state: enabled
+
+- name: Read the current firewalld default zone
+  ansible.builtin.command: firewall-cmd --get-default-zone
+  register: firewall_default_zone
+  changed_when: false
+
+- name: Use the drop zone for unclassified ingress
+  ansible.builtin.command: firewall-cmd --set-default-zone=drop
+  when: firewall_default_zone.stdout != "drop"
+  changed_when: true
+
+- name: Install Docker forwarding firewall script
+  ansible.builtin.template:
+    src: ostos-docker-firewall.sh.j2
+    dest: /usr/local/sbin/ostos-docker-firewall
+    owner: root
+    group: root
+    mode: "0750"
+  notify: Apply Docker firewall
+
+- name: Install Docker forwarding firewall service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/ostos-docker-firewall.service
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Ostos Docker ingress policy
+      Requires=docker.service
+      After=docker.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/ostos-docker-firewall
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: Apply Docker firewall
+
+- name: Enable Docker forwarding firewall
+  ansible.builtin.systemd_service:
+    name: ostos-docker-firewall.service
+    enabled: true
+    daemon_reload: true
+    state: started

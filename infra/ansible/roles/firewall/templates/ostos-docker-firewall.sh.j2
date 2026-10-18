@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+iptables -N OSTOS-CLOUDFLARE 2>/dev/null || true
+iptables -F OSTOS-CLOUDFLARE
+iptables -C DOCKER-USER -j OSTOS-CLOUDFLARE 2>/dev/null || iptables -I DOCKER-USER 1 -j OSTOS-CLOUDFLARE
+iptables -A OSTOS-CLOUDFLARE -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+{% for cidr in cloudflare_ipv4_cidrs %}
+iptables -A OSTOS-CLOUDFLARE -p tcp -s {{ cidr }} --dport 8443 -j RETURN
+{% endfor %}
+iptables -A OSTOS-CLOUDFLARE -p tcp --dport 8443 -j DROP
+iptables -A OSTOS-CLOUDFLARE -j RETURN
+
