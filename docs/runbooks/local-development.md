@@ -4,7 +4,7 @@
 
 - Go 1.27.2 or a Go toolchain capable of downloading it
 - Docker with Compose
-- Node.js 24 and npm for OpenAPI linting/client generation
+- Node.js 24 and npm for OpenAPI and mobile development
 
 ## Start the API and MySQL
 
@@ -51,3 +51,18 @@ docker compose stop
 ```
 
 Use `go run honnef.co/go/tools/cmd/staticcheck@latest ./...` and `go run golang.org/x/vuln/cmd/govulncheck@latest ./...` in each Go module so the analysis toolchain supports Go 1.27.
+
+## Run the mobile application
+
+Copy `mobile/.env.example` to the ignored `mobile/.env.local` and set `EXPO_PUBLIC_API_URL`. Use an address reachable by the device or emulator; Android cannot reach the host API through its own `localhost`.
+
+```sh
+cd mobile
+npm ci
+npm run lint
+npm run typecheck
+npm test
+npm start
+```
+
+`npm test` covers token persistence/rotation, rejected-refresh cleanup, stable API error mapping, offline mutation rejection, connectivity states, and the accessible stale-cache warning. Use `npm run export:android` as the Metro bundle smoke test before a mobile release.

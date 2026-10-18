@@ -32,7 +32,7 @@ This plan deliberately optimizes for correctness, low operational weight, and an
 - A complete authenticated experience on both the website and mobile app.
 - A user can create a Family or accept a Family invitation.
 - Every Family has exactly one Owner and one shared current grocery list.
-- Family members can plan a list, run an in-store trip, mark collected items, record quantities and amounts paid, and complete or cancel the trip.
+- Family members can plan a list, mark collected items, record quantities and amounts paid, and complete the list into immutable purchase history.
 - Completion explicitly keeps or discards unchecked items.
 - Trips retain immutable history, including the selected supermarket branch.
 - The mobile shopping flow remains usable through weak or absent supermarket connectivity.
@@ -235,7 +235,7 @@ Use Expo rather than raw React Native CLI:
 
 - Expo Router for file-based native routing and deep links.
 - TanStack Query with native focus/network integration.
-- `expo-sqlite` for the current Family snapshot and durable mutation outbox.
+- `expo-sqlite` for the last successful Family/list snapshot and its refresh timestamp. There is no mutation outbox.
 - OS secure storage through the auth SDK for credentials; never put tokens in SQLite.
 - Platform-specific UI where native conventions differ.
 - Development builds once native camera/barcode or other native modules require them.
@@ -276,9 +276,9 @@ Public routes:
 /support
 /auth/sign-in
 /auth/sign-up
-/auth/recover
-/auth/callback
-/invite/:token
+/verify-email
+/forgot-password
+/reset-password
 ```
 
 Authenticated routes:
@@ -377,7 +377,7 @@ The frozen Family roles are Owner, Manager, and Member. Owner is represented onl
 | --- | ---: | ---: | ---: |
 | View Family, list, and trips | Yes | Yes | Yes |
 | Add/edit/remove/check list entries | Yes | Yes | Yes |
-| Start, run, complete, or cancel a trip | Yes | Yes | Yes |
+| Edit or complete the shared list | Yes | Yes | Yes |
 | Invite/remove Members | Yes | Yes | No |
 | Edit Family settings | Yes | Yes | No |
 | Invite/promote/demote Managers | Yes | No | No |
@@ -403,7 +403,7 @@ Invariants:
 2. The client logs in and stores the short-lived access JWT and rotated opaque refresh token in operating-system secure storage.
 3. It loads the User's Families and pending invitations.
 4. With no membership, the UI offers “Create Family” and “Accept invitation.”
-5. Creating a Family inserts the Family and Owner membership in one transaction.
+5. Creating a Family stores its sole Owner in `families.owner_id`; Owner responses are synthesized and no Owner membership row is inserted.
 6. Owners and Managers invite an existing account by exact lowercase username or exact Snowflake User ID.
 7. The invited User accepts or declines the pending invitation by its Snowflake ID.
 8. Acceptance rechecks expiry and the Family limit and creates the membership atomically.

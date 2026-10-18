@@ -1,12 +1,12 @@
 # Project foundation
 
-Status: implemented by plan step 1
+Status: implemented through plan step 4
 
 ## Boundaries
 
 The backend is one Go modular monolith. Business packages own their future domain entities, policies, services, errors, and narrow repository interfaces. HTTP code depends on service-facing contracts; MySQL adapters depend inward on capability contracts. `cmd/api/main.go` is the only API composition root.
 
-The accounts, Families, and shopping packages are deliberately scaffolds in this step. Their schema and behavior belong to later plan steps; documenting fictional tables as implemented would be worse than leaving an honest boundary marker.
+The accounts, Families, and shopping capabilities are implemented. Accounts use verified email/password authentication with short-lived JWT access tokens and rotating opaque refresh sessions. Families store ownership separately from Manager/Member rows. Shopping uses one implicit current list per Family and creates immutable trip history only when checked items are completed.
 
 ## Runtime conventions
 
@@ -28,7 +28,7 @@ Errors always use the stable `errors` envelope. Internal causes are logged serve
 
 ## Database migration boundary
 
-The initial migration establishes version 1 without inventing capability tables. `golang-migrate` owns its `schema_migrations` bookkeeping table. Capability steps add forward-only SQL and matching GORM models. The API database user has data privileges only; only the migration process receives schema-administration credentials.
+Migrations 2 through 4 create accounts, Families, current-list, and trip-history tables. `golang-migrate` owns its `schema_migrations` bookkeeping table. The API database user has data privileges only; only the migration process receives schema-administration credentials. GORM maps these tables but never migrates them.
 
 `backend/compose.production.yml` is a hardened single-container baseline, not the completed public deployment. Origin CA TLS, port 443 publication, Cloudflare CIDR filtering, resource limits, health checks, and certificate mounts belong to production implementation step 6 and must be added together.
 
@@ -36,4 +36,4 @@ The initial migration establishes version 1 without inventing capability tables.
 
 Run the commands in `docs/runbooks/local-development.md`. The MySQL integration test is skipped unless `OSTOS_TEST_MYSQL_DSN` is set; the checked-in migration Compose project supplies a disposable real MySQL 8.4 instance and that variable.
 
-Verification record, 2026-10-17: both modules built with Go 1.27.2; unit/race/vet/current-staticcheck scans passed; the migration ran twice idempotently on empty MySQL 8.4; GORM connected to the migrated schema without changing it; both container images built; and containerized liveness/readiness returned `200` with `{ "status": "ok" }`.
+Verification record, 2026-10-18: backend unit tests and `go vet` passed; all four migrations and the accounts, Families, and shopping repository suites passed against MySQL 8.4 in Compose; and the OpenAPI contract linted, regenerated, and type-checked cleanly. HeatWave compatibility remains a release gate because a local MySQL test cannot honestly stand in for the managed service.
