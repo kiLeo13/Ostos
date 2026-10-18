@@ -1,0 +1,11 @@
+output "api_instance_id" { value = module.compute.instance_id }
+output "api_public_ip" { value = module.compute.public_ip }
+output "api_public_ip_id" { value = module.compute.public_ip_id }
+output "api_private_ip" { value = module.compute.private_ip }
+output "mysql_db_system_id" { value = module.database.db_system_id }
+output "mysql_private_ip" { value = module.database.private_ip }
+output "mysql_port" { value = module.database.port }
+output "mysql_hostname" { value = module.database.hostname }
+output "availability_domain" { value = local.availability_domain }
+output "snowflake_node_id" { value = var.snowflake_node_id }
+output "cloudflare_ipv4_cidrs" { value = var.cloudflare_ipv4_cidrs }

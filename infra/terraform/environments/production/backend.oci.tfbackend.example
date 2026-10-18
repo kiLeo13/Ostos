@@ -1,0 +1,6 @@
+bucket              = "ostos-terraform-state-replace-me"
+namespace           = "replace-with-object-storage-namespace"
+region              = "sa-saopaulo-1"
+key                 = "production/terraform.tfstate"
+config_file_profile = "DEFAULT"
+
