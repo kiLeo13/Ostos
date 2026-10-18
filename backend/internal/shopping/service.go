@@ -37,9 +37,6 @@ func (service *Service) GetList(ctx context.Context, familyID, userID platform.I
 }
 
 func (service *Service) CreateItem(ctx context.Context, familyID, userID platform.ID, input CreateItemInput) (ListItem, error) {
-	if err := service.repository.CheckMembership(ctx, familyID, userID); err != nil {
-		return ListItem{}, err
-	}
 	name := strings.TrimSpace(input.Name)
 	if len(name) < 1 || len(name) > 160 {
 		return ListItem{}, errors.New("item name must be between 1 and 160 characters")
@@ -69,6 +66,12 @@ func (service *Service) CreateItem(ctx context.Context, familyID, userID platfor
 
 	var created ListItem
 	err = service.repository.WithinTransaction(ctx, func(repository Repository) error {
+		if lockErr := repository.LockFamily(ctx, familyID); lockErr != nil {
+			return lockErr
+		}
+		if membershipErr := repository.CheckMembership(ctx, familyID, userID); membershipErr != nil {
+			return membershipErr
+		}
 		maxPos, posErr := repository.GetMaxPosition(ctx, familyID)
 		if posErr != nil {
 			return posErr
@@ -100,12 +103,14 @@ func (service *Service) CreateItem(ctx context.Context, familyID, userID platfor
 }
 
 func (service *Service) UpdateItem(ctx context.Context, familyID, itemID, userID platform.ID, input UpdateItemInput) (ListItem, error) {
-	if err := service.repository.CheckMembership(ctx, familyID, userID); err != nil {
-		return ListItem{}, err
-	}
-
 	var updated ListItem
 	err := service.repository.WithinTransaction(ctx, func(repository Repository) error {
+		if lockErr := repository.LockFamily(ctx, familyID); lockErr != nil {
+			return lockErr
+		}
+		if membershipErr := repository.CheckMembership(ctx, familyID, userID); membershipErr != nil {
+			return membershipErr
+		}
 		item, err := repository.GetListItem(ctx, familyID, itemID)
 		if err != nil {
 			return err
@@ -206,22 +211,31 @@ func (service *Service) UpdateItem(ctx context.Context, familyID, itemID, userID
 }
 
 func (service *Service) DeleteItem(ctx context.Context, familyID, itemID, userID platform.ID) error {
-	if err := service.repository.CheckMembership(ctx, familyID, userID); err != nil {
-		return err
-	}
-	return service.repository.DeleteListItem(ctx, familyID, itemID)
+	return service.repository.WithinTransaction(ctx, func(repository Repository) error {
+		if err := repository.LockFamily(ctx, familyID); err != nil {
+			return err
+		}
+		if err := repository.CheckMembership(ctx, familyID, userID); err != nil {
+			return err
+		}
+		return repository.DeleteListItem(ctx, familyID, itemID)
+	})
 }
 
 func (service *Service) ReorderItems(ctx context.Context, familyID, userID platform.ID, itemIDs []platform.ID) ([]ListItem, error) {
-	if err := service.repository.CheckMembership(ctx, familyID, userID); err != nil {
-		return nil, err
-	}
-	if len(itemIDs) == 0 {
-		return service.GetList(ctx, familyID, userID)
-	}
-
 	var items []ListItem
 	err := service.repository.WithinTransaction(ctx, func(repository Repository) error {
+		if err := repository.LockFamily(ctx, familyID); err != nil {
+			return err
+		}
+		if err := repository.CheckMembership(ctx, familyID, userID); err != nil {
+			return err
+		}
+		if len(itemIDs) == 0 {
+			var listErr error
+			items, listErr = repository.GetList(ctx, familyID)
+			return listErr
+		}
 		if err := repository.ReorderListItems(ctx, familyID, itemIDs); err != nil {
 			return err
 		}
@@ -236,9 +250,6 @@ func (service *Service) ReorderItems(ctx context.Context, familyID, userID platf
 }
 
 func (service *Service) CompleteList(ctx context.Context, familyID, userID platform.ID, input CompleteListInput) (*TripDetail, error) {
-	if err := service.repository.CheckMembership(ctx, familyID, userID); err != nil {
-		return nil, err
-	}
 	if !input.DefaultUncheckedAction.Valid() {
 		return nil, ErrInvalidAction
 	}
@@ -253,6 +264,9 @@ func (service *Service) CompleteList(ctx context.Context, familyID, userID platf
 	var result *TripDetail
 	err := service.repository.WithinTransaction(ctx, func(repository Repository) error {
 		if err := repository.LockFamily(ctx, familyID); err != nil {
+			return err
+		}
+		if err := repository.CheckMembership(ctx, familyID, userID); err != nil {
 			return err
 		}
 		currentItems, err := repository.LockListItemsForUpdate(ctx, familyID)

@@ -22,9 +22,13 @@ func (gen *memoryIDGenerator) Next(ctx context.Context) (platform.ID, error) {
 }
 
 type memoryRepository struct {
-	items []ListItem
-	trips []Trip
-	tripItems []TripItem
+	items              []ListItem
+	trips              []Trip
+	tripItems          []TripItem
+	membershipErr      error
+	membershipChecks   int
+	lockedBeforeCheck  bool
+	familyLockAcquired bool
 }
 
 func (repo *memoryRepository) WithinTransaction(ctx context.Context, fn func(Repository) error) error {
@@ -32,10 +36,13 @@ func (repo *memoryRepository) WithinTransaction(ctx context.Context, fn func(Rep
 }
 
 func (repo *memoryRepository) CheckMembership(ctx context.Context, familyID, userID platform.ID) error {
-	return nil
+	repo.membershipChecks++
+	repo.lockedBeforeCheck = repo.familyLockAcquired
+	return repo.membershipErr
 }
 
 func (repo *memoryRepository) LockFamily(ctx context.Context, familyID platform.ID) error {
+	repo.familyLockAcquired = true
 	return nil
 }
 
@@ -273,6 +280,26 @@ func TestCompleteZeroPurchasesCreatesNoTrip(t *testing.T) {
 	}
 	if len(repo.items) != 1 || repo.items[0].ID != item2.ID {
 		t.Fatalf("expected only kept Item 2, got %+v", repo.items)
+	}
+}
+
+func TestCompleteListRechecksMembershipAfterLockingFamily(t *testing.T) {
+	repo := &memoryRepository{membershipErr: ErrForbidden}
+	ids := &memoryIDGenerator{nextID: 400}
+	clock := memoryClock{now: time.Date(2026, 10, 18, 12, 0, 0, 0, time.UTC)}
+	service, _ := NewService(repo, ids, clock)
+
+	_, err := service.CompleteList(context.Background(), 1, 10, CompleteListInput{
+		DefaultUncheckedAction: ActionKeep,
+	})
+	if err != ErrForbidden {
+		t.Fatalf("complete list error = %v, want ErrForbidden", err)
+	}
+	if repo.membershipChecks != 1 || !repo.lockedBeforeCheck {
+		t.Fatalf("membership check must happen once after the Family lock; checks=%d locked=%t", repo.membershipChecks, repo.lockedBeforeCheck)
+	}
+	if len(repo.trips) != 0 {
+		t.Fatalf("unauthorized completion created %d trips", len(repo.trips))
 	}
 }
 
