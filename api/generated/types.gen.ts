@@ -4,17 +4,133 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});
 };
 
+export type SnowflakeId = string;
+
+export type Timestamp = string;
+
 export type Health = {
     status: 'ok';
 };
 
-export type SnowflakeId = string;
+export type User = {
+    id: SnowflakeId;
+    email: string;
+    username: Username;
+    display_name: string;
+    email_verified: boolean;
+    created_at: Timestamp;
+    updated_at: Timestamp;
+};
 
-export type Quantity = string;
+export type Username = string;
 
-export type Cents = number;
+export type Password = string;
 
-export type Timestamp = string;
+export type UserCreateRequest = {
+    email: string;
+    username: Username;
+    display_name: string;
+};
+
+export type UserUpdateRequest = {
+    username?: Username;
+    display_name?: string;
+};
+
+export type PasswordConfirmationRequest = {
+    current_password: string;
+};
+
+export type PasswordChangeRequest = {
+    [key: string]: never;
+};
+
+export type LoginRequest = {
+    identifier: string;
+    device_name?: string;
+};
+
+export type RefreshRequest = {
+    refresh_token: string;
+};
+
+export type AccountTokenRequest = {
+    token: string;
+};
+
+export type EmailRequest = {
+    email: string;
+};
+
+export type PasswordResetRequest = {
+    [key: string]: never;
+};
+
+export type TokenPair = {
+    token_type: 'Bearer';
+    expires_in: 1800;
+};
+
+export type FamilyRole = 'owner' | 'manager' | 'member';
+
+export type Family = {
+    id: SnowflakeId;
+    name: string;
+    owner_id: SnowflakeId;
+    created_at: Timestamp;
+    updated_at: Timestamp;
+};
+
+export type FamilySummary = {
+    id: SnowflakeId;
+    name: string;
+    role: FamilyRole;
+    created_at: Timestamp;
+    updated_at: Timestamp;
+};
+
+export type FamilyWriteRequest = {
+    name: string;
+};
+
+export type FamilyMember = {
+    id?: SnowflakeId;
+    user_id: SnowflakeId;
+    username: Username;
+    display_name: string;
+    role: FamilyRole;
+    joined_at: Timestamp;
+};
+
+export type MemberRoleRequest = {
+    role: 'manager' | 'member';
+};
+
+export type TransferOwnershipRequest = {
+    new_owner_id: SnowflakeId;
+};
+
+export type InvitationCreateRequest = unknown & {
+    username?: Username;
+    user_id?: SnowflakeId;
+};
+
+export type ReceivedInvitation = {
+    id: SnowflakeId;
+    family_id: SnowflakeId;
+    family_name: string;
+    expires_at: Timestamp;
+    created_at: Timestamp;
+};
+
+export type SentInvitation = {
+    id: SnowflakeId;
+    user_id: SnowflakeId;
+    username: Username;
+    display_name: string;
+    expires_at: Timestamp;
+    created_at: Timestamp;
+};
 
 export type ErrorEnvelope = {
     errors: ErrorDetail;
@@ -28,6 +144,154 @@ export type ErrorDetail = {
     };
 };
 
+export type Quantity = string;
+
+export type Unit = 'each' | 'g' | 'kg' | 'ml' | 'l';
+
+export type Cents = number;
+
+export type ShoppingListItem = {
+    id: SnowflakeId;
+    family_id: SnowflakeId;
+    name: string;
+    quantity: Quantity;
+    unit: Unit;
+    note?: string | null;
+    is_checked: boolean;
+    purchased_quantity?: Quantity | null;
+    total_cents?: Cents | null;
+    position: number;
+    added_by_id: SnowflakeId;
+    updated_by_id: SnowflakeId;
+    created_at: Timestamp;
+    updated_at: Timestamp;
+};
+
+export type ShoppingList = {
+    items: Array<ShoppingListItem>;
+};
+
+export type ShoppingListItemCreateRequest = {
+    name: string;
+    quantity: Quantity;
+    unit: Unit;
+    note?: string;
+};
+
+export type ShoppingListItemUpdateRequest = {
+    name?: string;
+    quantity?: Quantity;
+    unit?: Unit;
+    note?: string;
+    clear_note?: boolean;
+    is_checked?: boolean;
+    purchased_quantity?: Quantity;
+    clear_purchased_qty?: boolean;
+    total_cents?: Cents;
+    clear_total_cents?: boolean;
+};
+
+export type ShoppingListReorderRequest = {
+    item_ids: Array<SnowflakeId>;
+};
+
+export type ItemActionOverride = {
+    item_id: SnowflakeId;
+    action: 'keep' | 'discard';
+};
+
+export type ShoppingListCompleteRequest = {
+    supermarket_name?: string;
+    default_unchecked_action: 'keep' | 'discard';
+    unchecked_item_overrides?: Array<ItemActionOverride>;
+};
+
+export type ShoppingTrip = {
+    id: SnowflakeId;
+    family_id: SnowflakeId;
+    supermarket_name?: string | null;
+    completed_by_id: SnowflakeId;
+    completed_at: Timestamp;
+    created_at: Timestamp;
+};
+
+export type ShoppingTripItem = {
+    id: SnowflakeId;
+    trip_id: SnowflakeId;
+    source_item_id: SnowflakeId;
+    name: string;
+    quantity: Quantity;
+    unit: Unit;
+    note?: string | null;
+    added_by_id: SnowflakeId;
+    purchased_quantity?: Quantity | null;
+    total_cents?: Cents | null;
+    created_at: Timestamp;
+};
+
+export type ShoppingTripDetail = {
+    id: SnowflakeId;
+    family_id: SnowflakeId;
+    supermarket_name?: string | null;
+    completed_by_id: SnowflakeId;
+    completed_at: Timestamp;
+    created_at: Timestamp;
+    items: Array<ShoppingTripItem>;
+};
+
+export type ShoppingListCompleteResponse = {
+    trip: ShoppingTripDetail | null;
+};
+
+export type ShoppingTripList = {
+    trips: Array<ShoppingTrip>;
+    next_cursor?: string;
+};
+
+export type UserCreateRequestWritable = {
+    email: string;
+    username: Username;
+    display_name: string;
+    password: Password;
+};
+
+export type PasswordChangeRequestWritable = {
+    current_password: string;
+    new_password: Password;
+};
+
+export type LoginRequestWritable = {
+    identifier: string;
+    password: string;
+    device_name?: string;
+};
+
+export type PasswordResetRequestWritable = {
+    token: string;
+    new_password: Password;
+};
+
+export type TokenPairWritable = {
+    access_token: string;
+    refresh_token: string;
+    token_type: 'Bearer';
+    expires_in: 1800;
+};
+
+export type FamilyId = SnowflakeId;
+
+export type MemberId = SnowflakeId;
+
+export type InvitationId = SnowflakeId;
+
+export type ItemId = SnowflakeId;
+
+export type TripId = SnowflakeId;
+
+export type AccountToken = AccountTokenRequest;
+
+export type Email = EmailRequest;
+
 export type GetLivenessData = {
     body?: never;
     path?: never;
@@ -37,7 +301,7 @@ export type GetLivenessData = {
 
 export type GetLivenessResponses = {
     /**
-     * The process is alive.
+     * Healthy.
      */
     200: Health;
 };
@@ -53,7 +317,7 @@ export type GetReadinessData = {
 
 export type GetReadinessErrors = {
     /**
-     * A required dependency is unavailable.
+     * Stable API error.
      */
     503: ErrorEnvelope;
 };
@@ -62,9 +326,1132 @@ export type GetReadinessError = GetReadinessErrors[keyof GetReadinessErrors];
 
 export type GetReadinessResponses = {
     /**
-     * Required dependencies are ready.
+     * Healthy.
      */
     200: Health;
 };
 
 export type GetReadinessResponse = GetReadinessResponses[keyof GetReadinessResponses];
+
+export type CreateUserData = {
+    body: UserCreateRequestWritable;
+    path?: never;
+    query?: never;
+    url: '/v1/users';
+};
+
+export type CreateUserErrors = {
+    /**
+     * Stable API error.
+     */
+    409: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    422: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    429: ErrorEnvelope;
+};
+
+export type CreateUserError = CreateUserErrors[keyof CreateUserErrors];
+
+export type CreateUserResponses = {
+    /**
+     * Account created.
+     */
+    201: User;
+};
+
+export type CreateUserResponse = CreateUserResponses[keyof CreateUserResponses];
+
+export type DeleteCurrentUserData = {
+    body: PasswordConfirmationRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/users/me';
+};
+
+export type DeleteCurrentUserErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    409: ErrorEnvelope;
+};
+
+export type DeleteCurrentUserError = DeleteCurrentUserErrors[keyof DeleteCurrentUserErrors];
+
+export type DeleteCurrentUserResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type DeleteCurrentUserResponse = DeleteCurrentUserResponses[keyof DeleteCurrentUserResponses];
+
+export type GetCurrentUserData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/users/me';
+};
+
+export type GetCurrentUserErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+};
+
+export type GetCurrentUserError = GetCurrentUserErrors[keyof GetCurrentUserErrors];
+
+export type GetCurrentUserResponses = {
+    /**
+     * Current profile.
+     */
+    200: User;
+};
+
+export type GetCurrentUserResponse = GetCurrentUserResponses[keyof GetCurrentUserResponses];
+
+export type UpdateCurrentUserData = {
+    body: UserUpdateRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/users/me';
+};
+
+export type UpdateCurrentUserErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    409: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    422: ErrorEnvelope;
+};
+
+export type UpdateCurrentUserError = UpdateCurrentUserErrors[keyof UpdateCurrentUserErrors];
+
+export type UpdateCurrentUserResponses = {
+    /**
+     * Updated profile.
+     */
+    200: User;
+};
+
+export type UpdateCurrentUserResponse = UpdateCurrentUserResponses[keyof UpdateCurrentUserResponses];
+
+export type ChangeCurrentUserPasswordData = {
+    body: PasswordChangeRequestWritable;
+    path?: never;
+    query?: never;
+    url: '/v1/users/me/password';
+};
+
+export type ChangeCurrentUserPasswordErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    422: ErrorEnvelope;
+};
+
+export type ChangeCurrentUserPasswordError = ChangeCurrentUserPasswordErrors[keyof ChangeCurrentUserPasswordErrors];
+
+export type ChangeCurrentUserPasswordResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type ChangeCurrentUserPasswordResponse = ChangeCurrentUserPasswordResponses[keyof ChangeCurrentUserPasswordResponses];
+
+export type LoginData = {
+    body: LoginRequestWritable;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/login';
+};
+
+export type LoginErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    429: ErrorEnvelope;
+};
+
+export type LoginError = LoginErrors[keyof LoginErrors];
+
+export type LoginResponses = {
+    /**
+     * Rotating authentication token pair.
+     */
+    200: TokenPair;
+};
+
+export type LoginResponse = LoginResponses[keyof LoginResponses];
+
+export type RefreshAuthenticationData = {
+    body: RefreshRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/refresh';
+};
+
+export type RefreshAuthenticationErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    429: ErrorEnvelope;
+};
+
+export type RefreshAuthenticationError = RefreshAuthenticationErrors[keyof RefreshAuthenticationErrors];
+
+export type RefreshAuthenticationResponses = {
+    /**
+     * Rotating authentication token pair.
+     */
+    200: TokenPair;
+};
+
+export type RefreshAuthenticationResponse = RefreshAuthenticationResponses[keyof RefreshAuthenticationResponses];
+
+export type LogoutData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/logout';
+};
+
+export type LogoutErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+};
+
+export type LogoutError = LogoutErrors[keyof LogoutErrors];
+
+export type LogoutResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type LogoutResponse = LogoutResponses[keyof LogoutResponses];
+
+export type LogoutAllData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/logout-all';
+};
+
+export type LogoutAllErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+};
+
+export type LogoutAllError = LogoutAllErrors[keyof LogoutAllErrors];
+
+export type LogoutAllResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type LogoutAllResponse = LogoutAllResponses[keyof LogoutAllResponses];
+
+export type VerifyEmailData = {
+    body: AccountToken;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/verify-email';
+};
+
+export type VerifyEmailErrors = {
+    /**
+     * Stable API error.
+     */
+    400: ErrorEnvelope;
+};
+
+export type VerifyEmailError = VerifyEmailErrors[keyof VerifyEmailErrors];
+
+export type VerifyEmailResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type VerifyEmailResponse = VerifyEmailResponses[keyof VerifyEmailResponses];
+
+export type ResendEmailVerificationData = {
+    body: Email;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/resend-verification';
+};
+
+export type ResendEmailVerificationErrors = {
+    /**
+     * Stable API error.
+     */
+    429: ErrorEnvelope;
+};
+
+export type ResendEmailVerificationError = ResendEmailVerificationErrors[keyof ResendEmailVerificationErrors];
+
+export type ResendEmailVerificationResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type ResendEmailVerificationResponse = ResendEmailVerificationResponses[keyof ResendEmailVerificationResponses];
+
+export type ForgotPasswordData = {
+    body: Email;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/forgot-password';
+};
+
+export type ForgotPasswordErrors = {
+    /**
+     * Stable API error.
+     */
+    429: ErrorEnvelope;
+};
+
+export type ForgotPasswordError = ForgotPasswordErrors[keyof ForgotPasswordErrors];
+
+export type ForgotPasswordResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type ForgotPasswordResponse = ForgotPasswordResponses[keyof ForgotPasswordResponses];
+
+export type ResetPasswordData = {
+    body: PasswordResetRequestWritable;
+    path?: never;
+    query?: never;
+    url: '/v1/auth/reset-password';
+};
+
+export type ResetPasswordErrors = {
+    /**
+     * Stable API error.
+     */
+    400: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    422: ErrorEnvelope;
+};
+
+export type ResetPasswordError = ResetPasswordErrors[keyof ResetPasswordErrors];
+
+export type ResetPasswordResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type ResetPasswordResponse = ResetPasswordResponses[keyof ResetPasswordResponses];
+
+export type ListFamiliesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/families';
+};
+
+export type ListFamiliesErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+};
+
+export type ListFamiliesError = ListFamiliesErrors[keyof ListFamiliesErrors];
+
+export type ListFamiliesResponses = {
+    /**
+     * Authorized Family summaries.
+     */
+    200: Array<FamilySummary>;
+};
+
+export type ListFamiliesResponse = ListFamiliesResponses[keyof ListFamiliesResponses];
+
+export type CreateFamilyData = {
+    body: FamilyWriteRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/families';
+};
+
+export type CreateFamilyErrors = {
+    /**
+     * Stable API error.
+     */
+    409: ErrorEnvelope;
+};
+
+export type CreateFamilyError = CreateFamilyErrors[keyof CreateFamilyErrors];
+
+export type CreateFamilyResponses = {
+    /**
+     * Family created.
+     */
+    201: Family;
+};
+
+export type CreateFamilyResponse = CreateFamilyResponses[keyof CreateFamilyResponses];
+
+export type DeleteFamilyData = {
+    body?: never;
+    path: {
+        family_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}';
+};
+
+export type DeleteFamilyErrors = {
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+};
+
+export type DeleteFamilyError = DeleteFamilyErrors[keyof DeleteFamilyErrors];
+
+export type DeleteFamilyResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type DeleteFamilyResponse = DeleteFamilyResponses[keyof DeleteFamilyResponses];
+
+export type GetFamilyData = {
+    body?: never;
+    path: {
+        family_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}';
+};
+
+export type GetFamilyErrors = {
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+};
+
+export type GetFamilyError = GetFamilyErrors[keyof GetFamilyErrors];
+
+export type GetFamilyResponses = {
+    /**
+     * Family.
+     */
+    200: Family;
+};
+
+export type GetFamilyResponse = GetFamilyResponses[keyof GetFamilyResponses];
+
+export type UpdateFamilyData = {
+    body: FamilyWriteRequest;
+    path: {
+        family_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}';
+};
+
+export type UpdateFamilyErrors = {
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+};
+
+export type UpdateFamilyError = UpdateFamilyErrors[keyof UpdateFamilyErrors];
+
+export type UpdateFamilyResponses = {
+    /**
+     * Updated Family.
+     */
+    200: Family;
+};
+
+export type UpdateFamilyResponse = UpdateFamilyResponses[keyof UpdateFamilyResponses];
+
+export type ListFamilyMembersData = {
+    body?: never;
+    path: {
+        family_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}/members';
+};
+
+export type ListFamilyMembersErrors = {
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+};
+
+export type ListFamilyMembersError = ListFamilyMembersErrors[keyof ListFamilyMembersErrors];
+
+export type ListFamilyMembersResponses = {
+    /**
+     * Family participants.
+     */
+    200: Array<FamilyMember>;
+};
+
+export type ListFamilyMembersResponse = ListFamilyMembersResponses[keyof ListFamilyMembersResponses];
+
+export type RemoveFamilyMemberData = {
+    body?: never;
+    path: {
+        family_id: SnowflakeId;
+        member_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}/members/{member_id}';
+};
+
+export type RemoveFamilyMemberErrors = {
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+};
+
+export type RemoveFamilyMemberError = RemoveFamilyMemberErrors[keyof RemoveFamilyMemberErrors];
+
+export type RemoveFamilyMemberResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type RemoveFamilyMemberResponse = RemoveFamilyMemberResponses[keyof RemoveFamilyMemberResponses];
+
+export type UpdateFamilyMemberData = {
+    body: MemberRoleRequest;
+    path: {
+        family_id: SnowflakeId;
+        member_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}/members/{member_id}';
+};
+
+export type UpdateFamilyMemberErrors = {
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+};
+
+export type UpdateFamilyMemberError = UpdateFamilyMemberErrors[keyof UpdateFamilyMemberErrors];
+
+export type UpdateFamilyMemberResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type UpdateFamilyMemberResponse = UpdateFamilyMemberResponses[keyof UpdateFamilyMemberResponses];
+
+export type LeaveFamilyData = {
+    body?: never;
+    path: {
+        family_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}/leave';
+};
+
+export type LeaveFamilyErrors = {
+    /**
+     * Stable API error.
+     */
+    409: ErrorEnvelope;
+};
+
+export type LeaveFamilyError = LeaveFamilyErrors[keyof LeaveFamilyErrors];
+
+export type LeaveFamilyResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type LeaveFamilyResponse = LeaveFamilyResponses[keyof LeaveFamilyResponses];
+
+export type TransferFamilyOwnershipData = {
+    body: TransferOwnershipRequest;
+    path: {
+        family_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}/transfer-ownership';
+};
+
+export type TransferFamilyOwnershipErrors = {
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    409: ErrorEnvelope;
+};
+
+export type TransferFamilyOwnershipError = TransferFamilyOwnershipErrors[keyof TransferFamilyOwnershipErrors];
+
+export type TransferFamilyOwnershipResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type TransferFamilyOwnershipResponse = TransferFamilyOwnershipResponses[keyof TransferFamilyOwnershipResponses];
+
+export type ListReceivedInvitationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/invitations';
+};
+
+export type ListReceivedInvitationsResponses = {
+    /**
+     * Pending invitations.
+     */
+    200: Array<ReceivedInvitation>;
+};
+
+export type ListReceivedInvitationsResponse = ListReceivedInvitationsResponses[keyof ListReceivedInvitationsResponses];
+
+export type AcceptInvitationData = {
+    body?: never;
+    path: {
+        invitation_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/invitations/{invitation_id}/accept';
+};
+
+export type AcceptInvitationErrors = {
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    409: ErrorEnvelope;
+};
+
+export type AcceptInvitationError = AcceptInvitationErrors[keyof AcceptInvitationErrors];
+
+export type AcceptInvitationResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type AcceptInvitationResponse = AcceptInvitationResponses[keyof AcceptInvitationResponses];
+
+export type DeclineInvitationData = {
+    body?: never;
+    path: {
+        invitation_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/invitations/{invitation_id}/decline';
+};
+
+export type DeclineInvitationErrors = {
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+};
+
+export type DeclineInvitationError = DeclineInvitationErrors[keyof DeclineInvitationErrors];
+
+export type DeclineInvitationResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type DeclineInvitationResponse = DeclineInvitationResponses[keyof DeclineInvitationResponses];
+
+export type ListFamilyInvitationsData = {
+    body?: never;
+    path: {
+        family_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}/invitations';
+};
+
+export type ListFamilyInvitationsErrors = {
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+};
+
+export type ListFamilyInvitationsError = ListFamilyInvitationsErrors[keyof ListFamilyInvitationsErrors];
+
+export type ListFamilyInvitationsResponses = {
+    /**
+     * Sent invitations.
+     */
+    200: Array<SentInvitation>;
+};
+
+export type ListFamilyInvitationsResponse = ListFamilyInvitationsResponses[keyof ListFamilyInvitationsResponses];
+
+export type CreateFamilyInvitationData = {
+    body: InvitationCreateRequest;
+    path: {
+        family_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}/invitations';
+};
+
+export type CreateFamilyInvitationErrors = {
+    /**
+     * Stable API error.
+     */
+    400: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+};
+
+export type CreateFamilyInvitationError = CreateFamilyInvitationErrors[keyof CreateFamilyInvitationErrors];
+
+export type CreateFamilyInvitationResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type CreateFamilyInvitationResponse = CreateFamilyInvitationResponses[keyof CreateFamilyInvitationResponses];
+
+export type CancelFamilyInvitationData = {
+    body?: never;
+    path: {
+        family_id: SnowflakeId;
+        invitation_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}/invitations/{invitation_id}';
+};
+
+export type CancelFamilyInvitationErrors = {
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+};
+
+export type CancelFamilyInvitationError = CancelFamilyInvitationErrors[keyof CancelFamilyInvitationErrors];
+
+export type CancelFamilyInvitationResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type CancelFamilyInvitationResponse = CancelFamilyInvitationResponses[keyof CancelFamilyInvitationResponses];
+
+export type GetShoppingListData = {
+    body?: never;
+    path: {
+        family_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}/shopping-list';
+};
+
+export type GetShoppingListErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+};
+
+export type GetShoppingListError = GetShoppingListErrors[keyof GetShoppingListErrors];
+
+export type GetShoppingListResponses = {
+    /**
+     * Current shopping list items.
+     */
+    200: ShoppingList;
+};
+
+export type GetShoppingListResponse = GetShoppingListResponses[keyof GetShoppingListResponses];
+
+export type CreateShoppingListItemData = {
+    body: ShoppingListItemCreateRequest;
+    path: {
+        family_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}/shopping-list/items';
+};
+
+export type CreateShoppingListItemErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    422: ErrorEnvelope;
+};
+
+export type CreateShoppingListItemError = CreateShoppingListItemErrors[keyof CreateShoppingListItemErrors];
+
+export type CreateShoppingListItemResponses = {
+    /**
+     * Item added.
+     */
+    201: ShoppingListItem;
+};
+
+export type CreateShoppingListItemResponse = CreateShoppingListItemResponses[keyof CreateShoppingListItemResponses];
+
+export type DeleteShoppingListItemData = {
+    body?: never;
+    path: {
+        family_id: SnowflakeId;
+        item_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}/shopping-list/items/{item_id}';
+};
+
+export type DeleteShoppingListItemErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+};
+
+export type DeleteShoppingListItemError = DeleteShoppingListItemErrors[keyof DeleteShoppingListItemErrors];
+
+export type DeleteShoppingListItemResponses = {
+    /**
+     * Command completed.
+     */
+    204: void;
+};
+
+export type DeleteShoppingListItemResponse = DeleteShoppingListItemResponses[keyof DeleteShoppingListItemResponses];
+
+export type UpdateShoppingListItemData = {
+    body: ShoppingListItemUpdateRequest;
+    path: {
+        family_id: SnowflakeId;
+        item_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}/shopping-list/items/{item_id}';
+};
+
+export type UpdateShoppingListItemErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    422: ErrorEnvelope;
+};
+
+export type UpdateShoppingListItemError = UpdateShoppingListItemErrors[keyof UpdateShoppingListItemErrors];
+
+export type UpdateShoppingListItemResponses = {
+    /**
+     * Updated item.
+     */
+    200: ShoppingListItem;
+};
+
+export type UpdateShoppingListItemResponse = UpdateShoppingListItemResponses[keyof UpdateShoppingListItemResponses];
+
+export type ReorderShoppingListItemsData = {
+    body: ShoppingListReorderRequest;
+    path: {
+        family_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}/shopping-list/items/order';
+};
+
+export type ReorderShoppingListItemsErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    422: ErrorEnvelope;
+};
+
+export type ReorderShoppingListItemsError = ReorderShoppingListItemsErrors[keyof ReorderShoppingListItemsErrors];
+
+export type ReorderShoppingListItemsResponses = {
+    /**
+     * Reordered list.
+     */
+    200: ShoppingList;
+};
+
+export type ReorderShoppingListItemsResponse = ReorderShoppingListItemsResponses[keyof ReorderShoppingListItemsResponses];
+
+export type CompleteShoppingListData = {
+    body: ShoppingListCompleteRequest;
+    path: {
+        family_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}/shopping-list/complete';
+};
+
+export type CompleteShoppingListErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    422: ErrorEnvelope;
+};
+
+export type CompleteShoppingListError = CompleteShoppingListErrors[keyof CompleteShoppingListErrors];
+
+export type CompleteShoppingListResponses = {
+    /**
+     * Completion outcome.
+     */
+    200: ShoppingListCompleteResponse;
+};
+
+export type CompleteShoppingListResponse = CompleteShoppingListResponses[keyof CompleteShoppingListResponses];
+
+export type ListShoppingTripsData = {
+    body?: never;
+    path: {
+        family_id: SnowflakeId;
+    };
+    query?: {
+        cursor?: string;
+        limit?: number;
+    };
+    url: '/v1/families/{family_id}/shopping-trips';
+};
+
+export type ListShoppingTripsErrors = {
+    /**
+     * Stable API error.
+     */
+    400: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+};
+
+export type ListShoppingTripsError = ListShoppingTripsErrors[keyof ListShoppingTripsErrors];
+
+export type ListShoppingTripsResponses = {
+    /**
+     * Historical shopping trips.
+     */
+    200: ShoppingTripList;
+};
+
+export type ListShoppingTripsResponse = ListShoppingTripsResponses[keyof ListShoppingTripsResponses];
+
+export type GetShoppingTripData = {
+    body?: never;
+    path: {
+        family_id: SnowflakeId;
+        trip_id: SnowflakeId;
+    };
+    query?: never;
+    url: '/v1/families/{family_id}/shopping-trips/{trip_id}';
+};
+
+export type GetShoppingTripErrors = {
+    /**
+     * Stable API error.
+     */
+    401: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    403: ErrorEnvelope;
+    /**
+     * Stable API error.
+     */
+    404: ErrorEnvelope;
+};
+
+export type GetShoppingTripError = GetShoppingTripErrors[keyof GetShoppingTripErrors];
+
+export type GetShoppingTripResponses = {
+    /**
+     * Shopping trip details.
+     */
+    200: ShoppingTripDetail;
+};
+
+export type GetShoppingTripResponse = GetShoppingTripResponses[keyof GetShoppingTripResponses];

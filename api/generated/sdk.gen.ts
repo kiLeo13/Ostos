@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetLivenessData, GetLivenessResponses, GetReadinessData, GetReadinessErrors, GetReadinessResponses } from './types.gen';
+import type { AcceptInvitationData, AcceptInvitationErrors, AcceptInvitationResponses, CancelFamilyInvitationData, CancelFamilyInvitationErrors, CancelFamilyInvitationResponses, ChangeCurrentUserPasswordData, ChangeCurrentUserPasswordErrors, ChangeCurrentUserPasswordResponses, CompleteShoppingListData, CompleteShoppingListErrors, CompleteShoppingListResponses, CreateFamilyData, CreateFamilyErrors, CreateFamilyInvitationData, CreateFamilyInvitationErrors, CreateFamilyInvitationResponses, CreateFamilyResponses, CreateShoppingListItemData, CreateShoppingListItemErrors, CreateShoppingListItemResponses, CreateUserData, CreateUserErrors, CreateUserResponses, DeclineInvitationData, DeclineInvitationErrors, DeclineInvitationResponses, DeleteCurrentUserData, DeleteCurrentUserErrors, DeleteCurrentUserResponses, DeleteFamilyData, DeleteFamilyErrors, DeleteFamilyResponses, DeleteShoppingListItemData, DeleteShoppingListItemErrors, DeleteShoppingListItemResponses, ForgotPasswordData, ForgotPasswordErrors, ForgotPasswordResponses, GetCurrentUserData, GetCurrentUserErrors, GetCurrentUserResponses, GetFamilyData, GetFamilyErrors, GetFamilyResponses, GetLivenessData, GetLivenessResponses, GetReadinessData, GetReadinessErrors, GetReadinessResponses, GetShoppingListData, GetShoppingListErrors, GetShoppingListResponses, GetShoppingTripData, GetShoppingTripErrors, GetShoppingTripResponses, LeaveFamilyData, LeaveFamilyErrors, LeaveFamilyResponses, ListFamiliesData, ListFamiliesErrors, ListFamiliesResponses, ListFamilyInvitationsData, ListFamilyInvitationsErrors, ListFamilyInvitationsResponses, ListFamilyMembersData, ListFamilyMembersErrors, ListFamilyMembersResponses, ListReceivedInvitationsData, ListReceivedInvitationsResponses, ListShoppingTripsData, ListShoppingTripsErrors, ListShoppingTripsResponses, LoginData, LoginErrors, LoginResponses, LogoutAllData, LogoutAllErrors, LogoutAllResponses, LogoutData, LogoutErrors, LogoutResponses, RefreshAuthenticationData, RefreshAuthenticationErrors, RefreshAuthenticationResponses, RemoveFamilyMemberData, RemoveFamilyMemberErrors, RemoveFamilyMemberResponses, ReorderShoppingListItemsData, ReorderShoppingListItemsErrors, ReorderShoppingListItemsResponses, ResendEmailVerificationData, ResendEmailVerificationErrors, ResendEmailVerificationResponses, ResetPasswordData, ResetPasswordErrors, ResetPasswordResponses, TransferFamilyOwnershipData, TransferFamilyOwnershipErrors, TransferFamilyOwnershipResponses, UpdateCurrentUserData, UpdateCurrentUserErrors, UpdateCurrentUserResponses, UpdateFamilyData, UpdateFamilyErrors, UpdateFamilyMemberData, UpdateFamilyMemberErrors, UpdateFamilyMemberResponses, UpdateFamilyResponses, UpdateShoppingListItemData, UpdateShoppingListItemErrors, UpdateShoppingListItemResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -24,6 +24,408 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 export const getLiveness = <ThrowOnError extends boolean = false>(options?: Options<GetLivenessData, ThrowOnError>) => (options?.client ?? client).get<GetLivenessResponses, unknown, ThrowOnError>({ url: '/health/live', ...options });
 
 /**
- * Report required dependency readiness
+ * Report dependency readiness
  */
 export const getReadiness = <ThrowOnError extends boolean = false>(options?: Options<GetReadinessData, ThrowOnError>) => (options?.client ?? client).get<GetReadinessResponses, GetReadinessErrors, ThrowOnError>({ url: '/health/ready', ...options });
+
+/**
+ * Create an account and enqueue email verification
+ */
+export const createUser = <ThrowOnError extends boolean = false>(options: Options<CreateUserData, ThrowOnError>) => (options.client ?? client).post<CreateUserResponses, CreateUserErrors, ThrowOnError>({
+    url: '/v1/users',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete the account after password confirmation
+ */
+export const deleteCurrentUser = <ThrowOnError extends boolean = false>(options: Options<DeleteCurrentUserData, ThrowOnError>) => (options.client ?? client).delete<DeleteCurrentUserResponses, DeleteCurrentUserErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/users/me',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get the authenticated profile
+ */
+export const getCurrentUser = <ThrowOnError extends boolean = false>(options?: Options<GetCurrentUserData, ThrowOnError>) => (options?.client ?? client).get<GetCurrentUserResponses, GetCurrentUserErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/users/me',
+    ...options
+});
+
+/**
+ * Update username or display name
+ */
+export const updateCurrentUser = <ThrowOnError extends boolean = false>(options: Options<UpdateCurrentUserData, ThrowOnError>) => (options.client ?? client).patch<UpdateCurrentUserResponses, UpdateCurrentUserErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/users/me',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Change the password and revoke every session
+ */
+export const changeCurrentUserPassword = <ThrowOnError extends boolean = false>(options: Options<ChangeCurrentUserPasswordData, ThrowOnError>) => (options.client ?? client).put<ChangeCurrentUserPasswordResponses, ChangeCurrentUserPasswordErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/users/me/password',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Exchange verified account credentials for tokens
+ */
+export const login = <ThrowOnError extends boolean = false>(options: Options<LoginData, ThrowOnError>) => (options.client ?? client).post<LoginResponses, LoginErrors, ThrowOnError>({
+    url: '/v1/auth/login',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Rotate a refresh token and issue a new token pair
+ */
+export const refreshAuthentication = <ThrowOnError extends boolean = false>(options: Options<RefreshAuthenticationData, ThrowOnError>) => (options.client ?? client).post<RefreshAuthenticationResponses, RefreshAuthenticationErrors, ThrowOnError>({
+    url: '/v1/auth/refresh',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Revoke the current session
+ */
+export const logout = <ThrowOnError extends boolean = false>(options?: Options<LogoutData, ThrowOnError>) => (options?.client ?? client).post<LogoutResponses, LogoutErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/auth/logout',
+    ...options
+});
+
+/**
+ * Revoke every session for the current user
+ */
+export const logoutAll = <ThrowOnError extends boolean = false>(options?: Options<LogoutAllData, ThrowOnError>) => (options?.client ?? client).post<LogoutAllResponses, LogoutAllErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/auth/logout-all',
+    ...options
+});
+
+/**
+ * Consume an email-verification token
+ */
+export const verifyEmail = <ThrowOnError extends boolean = false>(options: Options<VerifyEmailData, ThrowOnError>) => (options.client ?? client).post<VerifyEmailResponses, VerifyEmailErrors, ThrowOnError>({
+    url: '/v1/auth/verify-email',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Enqueue verification when the account is eligible
+ */
+export const resendEmailVerification = <ThrowOnError extends boolean = false>(options: Options<ResendEmailVerificationData, ThrowOnError>) => (options.client ?? client).post<ResendEmailVerificationResponses, ResendEmailVerificationErrors, ThrowOnError>({
+    url: '/v1/auth/resend-verification',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Enqueue a password-reset email without disclosing account existence
+ */
+export const forgotPassword = <ThrowOnError extends boolean = false>(options: Options<ForgotPasswordData, ThrowOnError>) => (options.client ?? client).post<ForgotPasswordResponses, ForgotPasswordErrors, ThrowOnError>({
+    url: '/v1/auth/forgot-password',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Consume a reset token and revoke every session
+ */
+export const resetPassword = <ThrowOnError extends boolean = false>(options: Options<ResetPasswordData, ThrowOnError>) => (options.client ?? client).post<ResetPasswordResponses, ResetPasswordErrors, ThrowOnError>({
+    url: '/v1/auth/reset-password',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List Families visible to the current user
+ */
+export const listFamilies = <ThrowOnError extends boolean = false>(options?: Options<ListFamiliesData, ThrowOnError>) => (options?.client ?? client).get<ListFamiliesResponses, ListFamiliesErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families',
+    ...options
+});
+
+/**
+ * Create a Family owned by the current user
+ */
+export const createFamily = <ThrowOnError extends boolean = false>(options: Options<CreateFamilyData, ThrowOnError>) => (options.client ?? client).post<CreateFamilyResponses, CreateFamilyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete a Family as its Owner
+ */
+export const deleteFamily = <ThrowOnError extends boolean = false>(options: Options<DeleteFamilyData, ThrowOnError>) => (options.client ?? client).delete<DeleteFamilyResponses, DeleteFamilyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}',
+    ...options
+});
+
+/**
+ * Get one authorized Family
+ */
+export const getFamily = <ThrowOnError extends boolean = false>(options: Options<GetFamilyData, ThrowOnError>) => (options.client ?? client).get<GetFamilyResponses, GetFamilyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}',
+    ...options
+});
+
+/**
+ * Update Family settings
+ */
+export const updateFamily = <ThrowOnError extends boolean = false>(options: Options<UpdateFamilyData, ThrowOnError>) => (options.client ?? client).patch<UpdateFamilyResponses, UpdateFamilyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List the synthesized Owner and stored members
+ */
+export const listFamilyMembers = <ThrowOnError extends boolean = false>(options: Options<ListFamilyMembersData, ThrowOnError>) => (options.client ?? client).get<ListFamilyMembersResponses, ListFamilyMembersErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/members',
+    ...options
+});
+
+/**
+ * Remove a stored member
+ */
+export const removeFamilyMember = <ThrowOnError extends boolean = false>(options: Options<RemoveFamilyMemberData, ThrowOnError>) => (options.client ?? client).delete<RemoveFamilyMemberResponses, RemoveFamilyMemberErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/members/{member_id}',
+    ...options
+});
+
+/**
+ * Promote or demote a stored member
+ */
+export const updateFamilyMember = <ThrowOnError extends boolean = false>(options: Options<UpdateFamilyMemberData, ThrowOnError>) => (options.client ?? client).patch<UpdateFamilyMemberResponses, UpdateFamilyMemberErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/members/{member_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Leave a Family as a Manager or Member
+ */
+export const leaveFamily = <ThrowOnError extends boolean = false>(options: Options<LeaveFamilyData, ThrowOnError>) => (options.client ?? client).post<LeaveFamilyResponses, LeaveFamilyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/leave',
+    ...options
+});
+
+/**
+ * Transfer ownership to a current stored member
+ */
+export const transferFamilyOwnership = <ThrowOnError extends boolean = false>(options: Options<TransferFamilyOwnershipData, ThrowOnError>) => (options.client ?? client).post<TransferFamilyOwnershipResponses, TransferFamilyOwnershipErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/transfer-ownership',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List non-expired invitations received by the current user
+ */
+export const listReceivedInvitations = <ThrowOnError extends boolean = false>(options?: Options<ListReceivedInvitationsData, ThrowOnError>) => (options?.client ?? client).get<ListReceivedInvitationsResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/invitations',
+    ...options
+});
+
+/**
+ * Accept an invitation as a Member
+ */
+export const acceptInvitation = <ThrowOnError extends boolean = false>(options: Options<AcceptInvitationData, ThrowOnError>) => (options.client ?? client).post<AcceptInvitationResponses, AcceptInvitationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/invitations/{invitation_id}/accept',
+    ...options
+});
+
+/**
+ * Decline and delete an invitation
+ */
+export const declineInvitation = <ThrowOnError extends boolean = false>(options: Options<DeclineInvitationData, ThrowOnError>) => (options.client ?? client).post<DeclineInvitationResponses, DeclineInvitationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/invitations/{invitation_id}/decline',
+    ...options
+});
+
+/**
+ * List non-expired invitations for an administered Family
+ */
+export const listFamilyInvitations = <ThrowOnError extends boolean = false>(options: Options<ListFamilyInvitationsData, ThrowOnError>) => (options.client ?? client).get<ListFamilyInvitationsResponses, ListFamilyInvitationsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/invitations',
+    ...options
+});
+
+/**
+ * Invite by exact username or exact User ID
+ */
+export const createFamilyInvitation = <ThrowOnError extends boolean = false>(options: Options<CreateFamilyInvitationData, ThrowOnError>) => (options.client ?? client).post<CreateFamilyInvitationResponses, CreateFamilyInvitationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/invitations',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Cancel and delete a Family invitation
+ */
+export const cancelFamilyInvitation = <ThrowOnError extends boolean = false>(options: Options<CancelFamilyInvitationData, ThrowOnError>) => (options.client ?? client).delete<CancelFamilyInvitationResponses, CancelFamilyInvitationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/invitations/{invitation_id}',
+    ...options
+});
+
+/**
+ * Get the current Family shopping list
+ */
+export const getShoppingList = <ThrowOnError extends boolean = false>(options: Options<GetShoppingListData, ThrowOnError>) => (options.client ?? client).get<GetShoppingListResponses, GetShoppingListErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/shopping-list',
+    ...options
+});
+
+/**
+ * Add an item to the Family shopping list
+ */
+export const createShoppingListItem = <ThrowOnError extends boolean = false>(options: Options<CreateShoppingListItemData, ThrowOnError>) => (options.client ?? client).post<CreateShoppingListItemResponses, CreateShoppingListItemErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/shopping-list/items',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete a shopping list item
+ */
+export const deleteShoppingListItem = <ThrowOnError extends boolean = false>(options: Options<DeleteShoppingListItemData, ThrowOnError>) => (options.client ?? client).delete<DeleteShoppingListItemResponses, DeleteShoppingListItemErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/shopping-list/items/{item_id}',
+    ...options
+});
+
+/**
+ * Update a shopping list item
+ */
+export const updateShoppingListItem = <ThrowOnError extends boolean = false>(options: Options<UpdateShoppingListItemData, ThrowOnError>) => (options.client ?? client).patch<UpdateShoppingListItemResponses, UpdateShoppingListItemErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/shopping-list/items/{item_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Reorder shopping list items
+ */
+export const reorderShoppingListItems = <ThrowOnError extends boolean = false>(options: Options<ReorderShoppingListItemsData, ThrowOnError>) => (options.client ?? client).put<ReorderShoppingListItemsResponses, ReorderShoppingListItemsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/shopping-list/items/order',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Complete the shopping list, archive trip history, and process keep or discard items
+ */
+export const completeShoppingList = <ThrowOnError extends boolean = false>(options: Options<CompleteShoppingListData, ThrowOnError>) => (options.client ?? client).post<CompleteShoppingListResponses, CompleteShoppingListErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/shopping-list/complete',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List historical shopping trips for the Family
+ */
+export const listShoppingTrips = <ThrowOnError extends boolean = false>(options: Options<ListShoppingTripsData, ThrowOnError>) => (options.client ?? client).get<ListShoppingTripsResponses, ListShoppingTripsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/shopping-trips',
+    ...options
+});
+
+/**
+ * Get details of a historical shopping trip
+ */
+export const getShoppingTrip = <ThrowOnError extends boolean = false>(options: Options<GetShoppingTripData, ThrowOnError>) => (options.client ?? client).get<GetShoppingTripResponses, GetShoppingTripErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/v1/families/{family_id}/shopping-trips/{trip_id}',
+    ...options
+});
