@@ -1,0 +1,92 @@
+openapi: 3.1.0
+info:
+  title: Ostos API
+  version: 0.1.0
+  description: Contract for the Ostos modular monolith. This foundation version exposes operational health only.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /
+security: []
+paths:
+  /health/live:
+    get:
+      operationId: getLiveness
+      summary: Report process liveness
+      tags: [operations]
+      responses:
+        '200':
+          description: The process is alive.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+  /health/ready:
+    get:
+      operationId: getReadiness
+      summary: Report required dependency readiness
+      tags: [operations]
+      responses:
+        '200':
+          description: Required dependencies are ready.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '503':
+          description: A required dependency is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+components:
+  schemas:
+    Health:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: ok
+    SnowflakeId:
+      type: string
+      pattern: '^[1-9][0-9]*$'
+      example: '241895317264384000'
+    Quantity:
+      type: string
+      pattern: '^(0|[1-9][0-9]{0,8})(\.[0-9]{1,3})?$'
+      example: '1.500'
+    Cents:
+      type: integer
+      format: int64
+      minimum: 0
+      example: 1299
+    Timestamp:
+      type: string
+      format: date-time
+      example: '2026-10-17T12:00:00Z'
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [errors]
+      properties:
+        errors:
+          $ref: '#/components/schemas/ErrorDetail'
+    ErrorDetail:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+tags:
+  - name: operations
+    description: Process liveness and dependency readiness endpoints.

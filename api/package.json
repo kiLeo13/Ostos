@@ -1,0 +1,19 @@
+{
+  "name": "@ostos/api-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "redocly lint openapi.yaml",
+    "generate": "openapi-ts",
+    "check:generated": "node scripts/check-generated.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "0.97.3",
+    "@redocly/cli": "2.64.1",
+    "typescript": "6.0.3"
+  },
+  "overrides": {
+    "js-yaml": "4.3.2"
+  }
+}
