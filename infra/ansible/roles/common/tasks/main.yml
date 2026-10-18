@@ -1,0 +1,83 @@
+---
+- name: Create Ostos system group
+  ansible.builtin.group:
+    name: ostos
+    gid: "{{ ostos_gid }}"
+    system: true
+
+- name: Create locked Ostos service user
+  ansible.builtin.user:
+    name: ostos
+    uid: "{{ ostos_uid }}"
+    group: ostos
+    system: true
+    shell: /sbin/nologin
+    home: /var/lib/ostos
+    create_home: true
+    password_lock: true
+
+- name: Create Ostos directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: ostos
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /etc/ostos, owner: root, mode: "0750" }
+    - { path: /etc/ostos/tls, owner: root, mode: "0750" }
+    - { path: /var/lib/ostos/images, owner: ostos, mode: "0750" }
+
+- name: Bound persistent journald storage
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/ostos.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Journal]
+      SystemMaxUse=128M
+      RuntimeMaxUse=64M
+      MaxRetentionSec=14day
+  notify: Restart journald
+
+- name: Install local production health probe
+  ansible.builtin.template:
+    src: ostos-local-health.sh.j2
+    dest: /usr/local/sbin/ostos-local-health
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Install local production health service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/ostos-local-health.service
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Check Ostos disk and container health
+      After=docker.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/ostos-local-health
+
+- name: Install local production health timer
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/ostos-local-health.timer
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Run Ostos local health checks
+
+      [Timer]
+      OnBootSec=5min
+      OnUnitActiveSec=5min
+      Unit=ostos-local-health.service
+
+      [Install]
+      WantedBy=timers.target

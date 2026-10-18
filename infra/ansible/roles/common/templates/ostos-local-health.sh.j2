@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+failed=0
+disk_used="$(df --output=pcent / | tail -n 1 | tr -dc '0-9')"
+if (( disk_used >= 90 )); then
+  logger --journald <<EOF
+MESSAGE=Ostos root filesystem usage is ${disk_used}%
+PRIORITY=2
+OSTOS_ALERT=disk_pressure
+EOF
+  failed=1
+fi
+
+if docker inspect ostos-api >/dev/null 2>&1; then
+  health="$(docker inspect --format='{{ '{{' }}.State.Health.Status{{ '}}' }}' ostos-api)"
+  restarts="$(docker inspect --format='{{ '{{' }}.RestartCount{{ '}}' }}' ostos-api)"
+  if [[ "${health}" != "healthy" ]]; then
+    logger --journald <<EOF
+MESSAGE=Ostos API container health is ${health}
+PRIORITY=2
+OSTOS_ALERT=container_unhealthy
+EOF
+    failed=1
+  fi
+  if (( restarts >= 3 )); then
+    logger --journald <<EOF
+MESSAGE=Ostos API container restart count is ${restarts}
+PRIORITY=2
+OSTOS_ALERT=repeated_container_restart
+EOF
+    failed=1
+  fi
+else
+  logger --journald <<EOF
+MESSAGE=Ostos API container is absent
+PRIORITY=2
+OSTOS_ALERT=container_absent
+EOF
+  failed=1
+fi
+
+exit "${failed}"
