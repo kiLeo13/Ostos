@@ -1,0 +1,6 @@
+region                     = "sa-saopaulo-1"
+oci_profile                = "DEFAULT"
+compartment_id             = "ocid1.compartment.oc1..replace-me"
+policy_compartment_id      = "ocid1.tenancy.oc1..replace-me"
+state_bucket_name          = "ostos-terraform-state-replace-me"
+terraform_state_group_id   = "ocid1.group.oc1..replace-me"
