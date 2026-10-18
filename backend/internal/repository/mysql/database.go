@@ -3,12 +3,14 @@ package mysql
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"os"
 	"time"
 
 	mysqlprotocol "github.com/go-sql-driver/mysql"
 	gormmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 // Open creates the application's GORM connection. It never changes the schema.
@@ -20,8 +22,10 @@ func Open(dsn string) (*gorm.DB, *sql.DB, error) {
 	database, err := gorm.Open(gormmysql.Open(normalizedDSN), &gorm.Config{
 		SkipDefaultTransaction: true,
 		PrepareStmt:            true,
-		Logger:                 logger.Default.LogMode(logger.Error),
-		DisableAutomaticPing:   true,
+		Logger: gormlogger.New(log.New(os.Stderr, "", log.LstdFlags), gormlogger.Config{
+			LogLevel: gormlogger.Error, IgnoreRecordNotFoundError: true, ParameterizedQueries: true, Colorful: false,
+		}),
+		DisableAutomaticPing: true,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("open MySQL: %w", err)
